@@ -74,7 +74,7 @@ export async function openURL(url: string): Promise<void> {
     window.open(url, '_blank', 'noopener,noreferrer');
     return;
   }
-  
+
   // Dynamic import to avoid loading on web
   const WebBrowser = await import('expo-web-browser');
   await WebBrowser.openBrowserAsync(url);
@@ -104,7 +104,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       }
     }
   }
-  
+
   // Native
   const Clipboard = await import('expo-clipboard');
   await Clipboard.setStringAsync(text);
@@ -114,11 +114,35 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 /**
  * Check if a native module is available
  * Useful for graceful degradation
+ *
+ * IMPORTANT: Metro (Expo Web) cannot handle `require(moduleName)` where
+ * `moduleName` is dynamic. We therefore whitelist known modules with static
+ * requires so the bundler can resolve them at build time.
  */
-export function isModuleAvailable(moduleName: string): boolean {
+export type KnownModule =
+  | 'expo-web-browser'
+  | 'expo-clipboard'
+  | '@react-native-async-storage/async-storage'
+  | '@react-native-community/netinfo';
+
+export function isModuleAvailable(moduleName: KnownModule): boolean {
   try {
-    require(moduleName);
-    return true;
+    switch (moduleName) {
+      case 'expo-web-browser':
+        require('expo-web-browser');
+        return true;
+      case 'expo-clipboard':
+        require('expo-clipboard');
+        return true;
+      case '@react-native-async-storage/async-storage':
+        require('@react-native-async-storage/async-storage');
+        return true;
+      case '@react-native-community/netinfo':
+        require('@react-native-community/netinfo');
+        return true;
+      default:
+        return false;
+    }
   } catch {
     return false;
   }
@@ -130,7 +154,7 @@ export function isModuleAvailable(moduleName: string): boolean {
  */
 export const storage = {
   isWeb,
-  
+
   // Note: AsyncStorage from @react-native-async-storage/async-storage
   // has web support via localStorage, so no fallback needed
   supportsLargeStorage: isNative, // Web localStorage has ~5MB limit
