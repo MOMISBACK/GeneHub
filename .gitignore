@@ -6,6 +6,9 @@ node_modules/
 # Expo
 .expo/
 dist/
+
+# Local env
+.env
 web-build/
 expo-env.d.ts
 
@@ -39,3 +42,18 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Tests / coverage
+coverage/
+
+# Editor
+.vscode/
+
+# Supabase CLI local state
+supabase/.temp/
+
+# Logs
+*.log
+
+# OS / tooling
+.idea/

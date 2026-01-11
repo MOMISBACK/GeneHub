@@ -1,20 +1,35 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import { ThemeProvider, useTheme } from './src/theme';
+import { I18nProvider } from './src/i18n';
+import { SyncStatusBar } from './src/components/SyncStatusBar';
+import { initSentry } from './src/lib/monitoring';
 
-export default function App() {
+// Initialize Sentry on app start
+initSentry();
+
+function AppContent() {
+  const { isDark } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={{ flex: 1 }}>
+      <SyncStatusBar />
+      <AppNavigator />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </I18nProvider>
+    </SafeAreaProvider>
+  );
+}
