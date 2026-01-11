@@ -1,0 +1,1 @@
+export { TagCreateModal } from './TagCreateModal';
