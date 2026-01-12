@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { supabaseWithAuth } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -9,18 +10,23 @@ const log = (...args: unknown[]) => __DEV__ && console.log(...args);
 export async function signInWithGoogle(): Promise<void> {
   log('[auth] ========== STARTING GOOGLE SIGN IN ==========');
   
-  // For Dev Build: FORCE custom scheme, don't let makeRedirectUri pick exp://
-  // makeRedirectUri with tunnel mode returns exp:// which browsers can't handle
-  const redirectTo = 'genehub://auth/callback';
-  log('[auth] 1. redirectTo (forced custom scheme) =', redirectTo);
+  // Platform-aware redirect URL:
+  // - Web: Use current origin (Supabase will handle session automatically)
+  // - Mobile: Use custom scheme genehub://
+  const redirectTo = Platform.OS === 'web'
+    ? (typeof window !== 'undefined' ? window.location.origin : 'https://gene-hub-snowy.vercel.app')
+    : 'genehub://auth/callback';
+  
+  log('[auth] 1. Platform.OS =', Platform.OS);
+  log('[auth] 2. redirectTo =', redirectTo);
 
   // Log Supabase OAuth request
-  log('[auth] 2. Calling supabase.auth.signInWithOAuth...');
+  log('[auth] 3. Calling supabase.auth.signInWithOAuth...');
   const { data, error } = await supabaseWithAuth.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo,
-      skipBrowserRedirect: true,
+      skipBrowserRedirect: Platform.OS === 'web' ? false : true,
     },
   });
 
@@ -33,9 +39,18 @@ export async function signInWithGoogle(): Promise<void> {
     throw new Error('Missing OAuth URL');
   }
   
-  log('[auth] 3. Got OAuth URL (first 100 chars):', data.url.substring(0, 100) + '...');
-  log('[auth] 4. Opening WebBrowser.openAuthSessionAsync...');
+  log('[auth] 4. Got OAuth URL (first 100 chars):', data.url.substring(0, 100) + '...');
 
+  // Web: Supabase redirects browser and handles session automatically
+  if (Platform.OS === 'web') {
+    log('[auth] 5. Web platform - redirecting to OAuth (Supabase will handle session on return)');
+    // Browser will redirect to Google, then back to our app
+    // Supabase will automatically parse the hash and set the session
+    return;
+  }
+
+  // Mobile: Use WebBrowser to handle OAuth flow
+  log('[auth] 5. Mobile platform - Opening WebBrowser.openAuthSessionAsync...');
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
   
   log('[auth] 5. WebBrowser result type =', result.type);
