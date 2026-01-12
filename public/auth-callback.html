@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeneHub - Authentification</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #f3f4f6;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    h1 {
+      font-size: 24px;
+      color: #111827;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    
+    p {
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    
+    .deep-link-btn {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+      margin-top: 16px;
+    }
+    
+    .deep-link-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .error {
+      background: #fef2f2;
+      border: 2px solid #fee2e2;
+      color: #991b1b;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 24px;
+    }
+    
+    .success {
+      color: #059669;
+      font-weight: 600;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <h1>🔄 Connexion en cours...</h1>
+      <p>Vous allez être redirigé vers l'application GeneHub.</p>
+    </div>
+    
+    <div id="success" class="hidden">
+      <h1 class="success">✅ Connexion réussie !</h1>
+      <p>Si l'application ne s'ouvre pas automatiquement, cliquez ci-dessous :</p>
+      <a href="#" id="deep-link" class="deep-link-btn">Ouvrir GeneHub</a>
+    </div>
+    
+    <div id="error" class="hidden">
+      <h1>❌ Erreur de connexion</h1>
+      <p>Une erreur s'est produite lors de la connexion.</p>
+      <div class="error" id="error-message"></div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      
+      // Récupérer les paramètres OAuth (code ou tokens)
+      const code = params.get('code') || hashParams.get('code');
+      const error = params.get('error') || hashParams.get('error');
+      const errorDescription = params.get('error_description') || hashParams.get('error_description');
+      
+      // Récupérer les tokens du hash (implicit flow)
+      const access_token = hashParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token');
+      
+      console.log('[auth-callback] Code:', !!code);
+      console.log('[auth-callback] Error:', error);
+      console.log('[auth-callback] Access token:', !!access_token);
+      
+      // Gérer les erreurs
+      if (error) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+        document.getElementById('error-message').textContent = errorDescription || error;
+        return;
+      }
+      
+      // Construire l'URL de deep link
+      let deepLinkUrl = 'genehub://auth/callback';
+      
+      if (code) {
+        deepLinkUrl += '?code=' + encodeURIComponent(code);
+      } else if (access_token) {
+        deepLinkUrl += '#access_token=' + encodeURIComponent(access_token);
+        if (refresh_token) {
+          deepLinkUrl += '&refresh_token=' + encodeURIComponent(refresh_token);
+        }
+      } else {
+        // Pas de code ni de tokens - erreur
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+        document.getElementById('error-message').textContent = 
+          'Aucun code d\'autorisation ou token trouvé dans la réponse OAuth.';
+        return;
+      }
+      
+      console.log('[auth-callback] Deep link URL:', deepLinkUrl);
+      
+      // Configurer le bouton manuel
+      document.getElementById('deep-link').href = deepLinkUrl;
+      
+      // Tentative automatique de deep link
+      window.location.href = deepLinkUrl;
+      
+      // Afficher le bouton manuel après 2 secondes
+      setTimeout(function() {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('success').classList.remove('hidden');
+      }, 2000);
+    })();
+  </script>
+</body>
+</html>
