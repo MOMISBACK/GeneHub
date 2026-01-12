@@ -11,10 +11,10 @@ export async function signInWithGoogle(): Promise<void> {
   log('[auth] ========== STARTING GOOGLE SIGN IN ==========');
   
   // Platform-aware redirect URL:
-  // - Web (Vercel): Use /auth/callback page that will deep-link back to app
+  // - Web: Use current origin (Supabase will handle session automatically)
   // - Mobile: Use custom scheme genehub://
   const redirectTo = Platform.OS === 'web'
-    ? 'https://gene-hub-snowy.vercel.app/auth/callback'
+    ? (typeof window !== 'undefined' ? window.location.origin : 'https://gene-hub-snowy.vercel.app')
     : 'genehub://auth/callback';
   
   log('[auth] 1. Platform.OS =', Platform.OS);
@@ -41,11 +41,11 @@ export async function signInWithGoogle(): Promise<void> {
   
   log('[auth] 4. Got OAuth URL (first 100 chars):', data.url.substring(0, 100) + '...');
 
-  // Web: Supabase handles redirect automatically (skipBrowserRedirect: false)
+  // Web: Supabase redirects browser and handles session automatically
   if (Platform.OS === 'web') {
-    log('[auth] 5. Web platform - Supabase will handle redirect');
-    // On web, Supabase redirects automatically and handles session
-    // The callback will be handled by the Vercel page
+    log('[auth] 5. Web platform - redirecting to OAuth (Supabase will handle session on return)');
+    // Browser will redirect to Google, then back to our app
+    // Supabase will automatically parse the hash and set the session
     return;
   }
 
