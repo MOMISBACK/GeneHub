@@ -1,4 +1,22 @@
 {
+  "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/auth/callback",
+      "destination": "/vercel-static/auth-callback.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/vercel-static/auth-callback.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
