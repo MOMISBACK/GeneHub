@@ -12,7 +12,8 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "${SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "preview": {
@@ -22,13 +23,15 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "${SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "${SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },

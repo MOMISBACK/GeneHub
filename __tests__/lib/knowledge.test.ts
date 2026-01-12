@@ -382,7 +382,7 @@ describe('Knowledge Base API', () => {
 
       await linkArticleToConference('a1', 'c1');
 
-      expect(mockFromImpl).toHaveBeenCalledWith('article_conferences');
+      expect(mockFromImpl).toHaveBeenCalledWith('conference_articles');
     });
   });
 

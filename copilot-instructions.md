@@ -1,6 +1,6 @@
 # GeneHub Bacteria - Copilot Instructions
 
-> **Last updated**: January 11, 2026 (Refactoring v2 - Knowledge Base)
+> **Last updated**: January 12, 2026 (v3 - Knowledge Base + Collections + Inbox)
 
 These instructions are **authoritative** for this repo. Follow them systematically.
 
@@ -58,11 +58,12 @@ If the user says **"do not code yet"**:
 - Private per user (RLS)
 - NO chips, NO complex tokenization
 
-### Navigation (4 tabs)
-- **Genes** - Liste des protéines (API)
-- **Researchers** - Répertoire chercheurs (Supabase)
-- **Articles** - Publications (Supabase)
-- **Conferences** - Événements (Supabase)
+### Navigation (5 tabs)
+- **Genes** - Liste des protéines sauvegardées
+- **Inbox** - Quick capture et filtrage
+- **Knowledge** - Chercheurs, Articles, Conférences (Supabase)
+- **Collections** - Groupes d'items organisés
+- **Profile** - Paramètres utilisateur
 
 ### Design compliance rules
 - **NO gradients** — Use `colors.accent` with `colors.buttonPrimaryText` for headers
@@ -86,20 +87,38 @@ If the user says **"do not code yet"**:
 src/
 ├── components/
 │   ├── Icons.tsx           # Unicode icons
+│   ├── TabIcons.tsx        # SVG icons for tabs
+│   ├── SyncStatusBar.tsx   # Sync indicator
+│   ├── collections/        # Collection components
+│   ├── inbox/              # Inbox components
+│   ├── notes/              # Notes components
+│   ├── tags/               # Tag components
 │   └── gene-detail/        # Gene detail components
-├── screens/
+├── screens/                # 20 screens
 │   ├── GenesScreen.tsx     # Tab 1: Proteins list
 │   ├── GeneDetailScreen.tsx
-│   └── (TODO: ResearchersScreen, ArticlesScreen, ConferencesScreen)
+│   ├── InboxScreen.tsx     # Tab 2: Quick capture
+│   ├── ResearchersScreen.tsx
+│   ├── ArticlesScreen.tsx
+│   ├── ConferencesScreen.tsx
+│   ├── CollectionsScreen.tsx
+│   ├── ProfileScreen.tsx
+│   ├── SettingsScreen.tsx
+│   └── ... (other detail screens)
 ├── lib/
 │   ├── api.ts              # External API calls
 │   ├── auth.ts             # Supabase auth
 │   ├── cache.ts            # AsyncStorage cache
 │   ├── db.ts               # Supabase operations
+│   ├── crossref.ts         # DOI import
+│   ├── pubmed.ts           # PMID import
+│   ├── globalSearch.ts     # Unified search
+│   ├── knowledge/          # Knowledge Base services (façade)
+│   ├── inbox/              # Inbox parsing
 │   └── hooks/              # Custom hooks
 ├── navigation/
 │   ├── AppNavigator.tsx
-│   ├── MainTabs.tsx        # 4 tabs
+│   ├── MainTabs.tsx        # 5 tabs
 │   └── types.ts
 └── theme/                  # Design system
 ```

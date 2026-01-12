@@ -1,22 +1,5 @@
 {
-  "buildCommand": "npm run build:web",
+  "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
-  "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/auth/callback",
-      "destination": "/vercel-static/auth-callback.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/vercel-static/auth-callback.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    }
-  ]
+  "cleanUrls": true
 }
