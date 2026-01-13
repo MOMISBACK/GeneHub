@@ -13,6 +13,7 @@ import { useTheme, ThemeMode, typography, spacing, radius } from '../theme';
 import { useI18n, LANGUAGES, LanguageCode } from '../i18n';
 import { signOut } from '../lib/auth';
 import { Icon } from '../components/Icons';
+import { TabIcon } from '../components/TabIcons';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabsParamList, 'Settings'>,
@@ -133,7 +134,7 @@ export function SettingsScreen({ navigation }: Props) {
         >
           <View style={styles.navRow}>
             <View style={styles.navLeft}>
-              <Text style={styles.navIcon}>📁</Text>
+              <TabIcon name="Collections" size={20} color={colors.textMuted} />
               <Text style={[styles.optionText, { color: colors.text }]}>Collections</Text>
             </View>
             <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
@@ -147,7 +148,7 @@ export function SettingsScreen({ navigation }: Props) {
         >
           <View style={styles.navRow}>
             <View style={styles.navLeft}>
-              <Text style={styles.navIcon}>🔒</Text>
+              <TabIcon name="Privacy" size={20} color={colors.textMuted} />
               <Text style={[styles.optionText, { color: colors.text }]}>Data & Privacy</Text>
             </View>
             <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
@@ -223,6 +224,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  navIcon: { fontSize: 20 },
   chevron: { fontSize: 24, fontWeight: '300' },
 });

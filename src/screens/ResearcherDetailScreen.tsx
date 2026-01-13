@@ -22,6 +22,7 @@ import { Icon } from '../components/Icons';
 import { NotesSection } from '../components/notes';
 import { RelationPicker } from '../components/relations';
 import { EntityEditModal } from '../components/edit';
+import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
 import { getResearcher, linkGeneToResearcher, linkArticleToResearcher, linkConferenceToResearcher } from '../lib/knowledge';
 import { useNotes } from '../lib/hooks';
 import type { ResearcherWithRelations, Article, Conference } from '../types/knowledge';
@@ -46,6 +47,7 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
   const [showArticlePicker, setShowArticlePicker] = useState(false);
   const [showConferencePicker, setShowConferencePicker] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,7 +128,22 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      {/* View Mode Toggle */}
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} notesCount={notes.length} />
+
+      {/* Notes Mode */}
+      {viewMode === 'notes' ? (
+        <NotesFullView
+          entityType="researcher"
+          entityId={researcherId}
+          entityName={researcher.name}
+          notes={notes}
+          onRefresh={refreshNotes}
+          loading={notesLoading}
+        />
+      ) : (
+        /* Recap Mode */
+        <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* Info Card */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
           <Text style={[styles.name, { color: colors.text }]}>{researcher.name}</Text>
@@ -235,16 +252,8 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
               </Pressable>
             ))}
         </View>
-
-        {/* Notes */}
-        <NotesSection
-          entityType="researcher"
-          entityId={researcherId}
-          notes={notes}
-          onRefresh={refreshNotes}
-          loading={notesLoading}
-        />
       </ScrollView>
+      )}
 
       {/* Relation Pickers */}
       <RelationPicker

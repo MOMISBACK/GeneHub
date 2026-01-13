@@ -68,6 +68,7 @@ export {
   listTags,
   createTag,
   getOrCreateTag,
+  getOrCreateTagWithData,
   deleteTag,
   getNotesForTag,
   addTagToNote,

@@ -16,9 +16,12 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icons';
+import { TabIcon } from '../components/TabIcons';
 
 import type { RootStackParamList, MainTabsParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
@@ -146,15 +149,25 @@ export function GenesScreen({ navigation }: Props) {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{t.search.title}</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{t.savedGenes.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Gènes</Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => navigation.navigate('Collections')}
+              style={styles.iconButton}
+              hitSlop={8}
+            >
+              <TabIcon name="Collections" size={20} color={colors.textMuted} />
+            </Pressable>
+            <GlobalSearchButton />
           </View>
-          <GlobalSearchButton />
         </View>
       </View>
 
@@ -223,7 +236,7 @@ export function GenesScreen({ navigation }: Props) {
           )
         }
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -232,7 +245,9 @@ const styles = StyleSheet.create({
   
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  headerTitle: { ...typography.h2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  iconButton: { padding: spacing.xs },
+  headerTitle: { ...typography.h1 },
   headerSubtitle: { ...typography.caption, marginTop: spacing.xs },
   
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: 120 },

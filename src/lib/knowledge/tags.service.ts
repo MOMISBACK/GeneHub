@@ -49,6 +49,27 @@ export async function getOrCreateTag(name: string): Promise<Tag> {
   return createTag({ name: name.toLowerCase().trim() });
 }
 
+/**
+ * Get or create a tag with full data (handles duplicates gracefully)
+ */
+export async function getOrCreateTagWithData(tagData: TagInsert): Promise<Tag> {
+  const userId = await requireUserId();
+  const normalizedName = tagData.name.toLowerCase().trim();
+  
+  // Try to find existing for this user
+  const { data: existing } = await supabaseWithAuth
+    .from('tags')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('name', normalizedName)
+    .single();
+
+  if (existing) return existing;
+
+  // Create new with all provided data
+  return createTag({ ...tagData, name: normalizedName });
+}
+
 export async function deleteTag(tagId: string): Promise<void> {
   const userId = await requireUserId();
   

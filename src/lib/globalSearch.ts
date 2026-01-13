@@ -1,10 +1,11 @@
 /**
  * Global Search Service
- * Unified search across genes (external APIs) and knowledge base (Supabase)
+ * Unified search across genes (saved + local list) and knowledge base (Supabase)
  */
 
 import { searchAll as searchKB, type SearchResult as KBSearchResult } from './knowledge';
 import { geneDataLayer } from './dataLayer';
+import { getSavedGenes, type SavedGene } from './cache';
 import type { GeneSummary } from './api';
 
 // ============ Types ============
@@ -89,7 +90,7 @@ const COMMON_GENES = [
 ];
 
 /**
- * Search for genes locally first, then optionally fetch from API
+ * Search for genes - first in user's saved genes, then in common genes list
  */
 async function searchGenes(
   query: string,
@@ -98,37 +99,78 @@ async function searchGenes(
 ): Promise<GeneSearchResult[]> {
   const normalizedQuery = query.toLowerCase().trim();
   const limit = options?.limit ?? 10;
+  const results: GeneSearchResult[] = [];
+  const seenSymbols = new Set<string>();
   
-  // Local search first
-  const localMatches = COMMON_GENES.filter(g => 
-    g.symbol.toLowerCase().includes(normalizedQuery) ||
-    g.name.toLowerCase().includes(normalizedQuery)
-  ).slice(0, limit);
+  // 1. Search in user's saved genes first (most relevant)
+  try {
+    const savedGenes = await getSavedGenes();
+    const savedMatches = savedGenes.filter(g => 
+      g.symbol.toLowerCase().includes(normalizedQuery) ||
+      g.data?.proteinName?.toLowerCase().includes(normalizedQuery) ||
+      (g.data?.synonyms ?? []).some(s => s.toLowerCase().includes(normalizedQuery))
+    );
+    
+    for (const g of savedMatches.slice(0, limit)) {
+      const key = g.symbol.toLowerCase();
+      if (!seenSymbols.has(key)) {
+        seenSymbols.add(key);
+        results.push({
+          type: 'gene',
+          data: {
+            symbol: g.symbol,
+            organism: g.organism,
+            name: g.data?.proteinName || g.proteinName,
+            description: g.data?.description,
+          },
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Error searching saved genes:', e);
+  }
+  
+  // 2. Search in common genes list (fill remaining slots)
+  if (results.length < limit) {
+    const localMatches = COMMON_GENES.filter(g => 
+      g.symbol.toLowerCase().includes(normalizedQuery) ||
+      g.name.toLowerCase().includes(normalizedQuery)
+    );
+    
+    for (const g of localMatches) {
+      if (results.length >= limit) break;
+      const key = g.symbol.toLowerCase();
+      if (!seenSymbols.has(key)) {
+        seenSymbols.add(key);
+        results.push({
+          type: 'gene',
+          data: { symbol: g.symbol, organism, name: g.name },
+        });
+      }
+    }
+  }
 
-  const results: GeneSearchResult[] = localMatches.map(g => ({
-    type: 'gene',
-    data: { symbol: g.symbol, organism, name: g.name },
-  }));
-
-  // If exact match, try to get full data from cache or API
-  if (options?.fetchRemote !== false) {
+  // 3. If exact match in common genes, try to get full data from cache
+  if (options?.fetchRemote !== false && results.length > 0) {
     const exactMatch = COMMON_GENES.find(g => 
       g.symbol.toLowerCase() === normalizedQuery
     );
     
     if (exactMatch) {
-      // Check cache first
       const cached = await geneDataLayer.getCached(exactMatch.symbol, organism);
       if (cached) {
-        results[0] = {
-          type: 'gene',
-          data: {
-            symbol: cached.symbol,
-            organism: cached.organism,
-            name: cached.proteinName ?? cached.name,
-            description: cached.description,
-          },
-        };
+        const idx = results.findIndex(r => r.data.symbol.toLowerCase() === normalizedQuery);
+        if (idx >= 0) {
+          results[idx] = {
+            type: 'gene',
+            data: {
+              symbol: cached.symbol,
+              organism: cached.organism,
+              name: cached.proteinName ?? cached.name,
+              description: cached.description,
+            },
+          };
+        }
       }
     }
   }

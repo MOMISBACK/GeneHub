@@ -54,6 +54,10 @@ export async function createInboxItem(
   }
 ): Promise<InboxServiceResult<InboxItem>> {
   try {
+    // Get current user
+    const { data: { user } } = await supabaseWithAuth.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     // Auto-detect type
     const parseResult = detectInboxType(raw);
     
@@ -64,6 +68,7 @@ export async function createInboxItem(
       title: options?.title,
       note: options?.note,
       tags: options?.tags ?? [],
+      user_id: user.id,
     };
 
     const { data, error } = await supabaseWithAuth

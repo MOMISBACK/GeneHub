@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
+import { TabIcon } from '../components/TabIcons';
 import {
   getCollection,
   getCollectionItems,
@@ -28,7 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CollectionDetail'>;
 
 interface SectionData {
   title: string;
-  icon: string;
+  iconName: 'Genes' | 'Articles' | 'Researchers' | 'Conferences';
   data: CollectionItem[];
 }
 
@@ -72,16 +73,16 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
       grouped[item.entity_type].push(item);
     }
 
-    const typeConfig: Record<string, { title: string; icon: string }> = {
-      gene: { title: 'Gènes', icon: '🧬' },
-      article: { title: 'Articles', icon: '📄' },
-      researcher: { title: 'Chercheurs', icon: '👤' },
-      conference: { title: 'Conférences', icon: '📅' },
+    const typeConfig: Record<string, { title: string; iconName: 'Genes' | 'Articles' | 'Researchers' | 'Conferences' }> = {
+      gene: { title: 'Gènes', iconName: 'Genes' },
+      article: { title: 'Articles', iconName: 'Articles' },
+      researcher: { title: 'Chercheurs', iconName: 'Researchers' },
+      conference: { title: 'Conférences', iconName: 'Conferences' },
     };
 
     return Object.entries(grouped).map(([type, data]) => ({
       title: typeConfig[type]?.title || type,
-      icon: typeConfig[type]?.icon || '📁',
+      iconName: typeConfig[type]?.iconName || 'Genes',
       data,
     }));
   }, [items]);
@@ -133,9 +134,12 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
 
   const renderSectionHeader = ({ section }: { section: SectionData }) => (
     <View style={[styles.sectionHeader, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        {section.icon} {section.title}
-      </Text>
+      <View style={styles.sectionLeft}>
+        <TabIcon name={section.iconName} size={18} color={colors.accent} />
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {section.title}
+        </Text>
+      </View>
       <Text style={[styles.sectionCount, { color: colors.textMuted }]}>
         {section.data.length}
       </Text>
@@ -266,6 +270,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginTop: spacing.md,
     marginBottom: spacing.xs,
+  },
+  sectionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   sectionTitle: {
     fontSize: 14,

@@ -88,6 +88,8 @@ export interface EntityNote {
   updated_at: string;
   // Joined data
   tags?: Tag[];
+  // Flag: true if this note appears via a tag link (not native to this entity)
+  isLinkedViaTag?: boolean;
 }
 
 export type EntityNoteInsert = Omit<EntityNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'tags'>;

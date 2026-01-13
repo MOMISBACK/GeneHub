@@ -13,6 +13,7 @@ type IconProps = {
 export const Icons = {
   // Navigation
   back: '←',
+  arrowBack: '←',
   forward: '→',
   up: '↑',
   down: '↓',
@@ -28,6 +29,7 @@ export const Icons = {
   delete: '✕',
   share: '↗',
   link: '↗',
+  refresh: '↻',
   
   // Status
   check: '✓',

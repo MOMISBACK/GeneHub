@@ -21,18 +21,18 @@ import type { RootStackParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { Icon } from '../components/Icons';
 import { TabIcon } from '../components/TabIcons';
-import { searchAll, type SearchResult } from '../lib/knowledge';
+import { globalSearch, type GlobalSearchResult } from '../lib/globalSearch';
 import type { Researcher, Article, Conference } from '../types/knowledge';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
 
-type ResultType = 'researcher' | 'article' | 'conference';
+type ResultType = 'gene' | 'researcher' | 'article' | 'conference';
 
 interface SectionData {
   title: string;
   type: ResultType;
-  icon: 'Researchers' | 'Articles' | 'Conferences';
-  data: SearchResult[];
+  icon: 'Genes' | 'Researchers' | 'Articles' | 'Conferences';
+  data: GlobalSearchResult[];
 }
 
 export function SearchScreen({ navigation }: Props) {
@@ -41,7 +41,7 @@ export function SearchScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<GlobalSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -51,7 +51,7 @@ export function SearchScreen({ navigation }: Props) {
     setLoading(true);
     setHasSearched(true);
     try {
-      const data = await searchAll(query.trim());
+      const data = await globalSearch(query.trim());
       setResults(data);
     } catch (e) {
       console.error('Search error:', e);
@@ -63,7 +63,8 @@ export function SearchScreen({ navigation }: Props) {
 
   // Group results into sections
   const sections: SectionData[] = useMemo(() => {
-    const grouped: Record<ResultType, SearchResult[]> = {
+    const grouped: Record<ResultType, GlobalSearchResult[]> = {
+      gene: [],
       researcher: [],
       article: [],
       conference: [],
@@ -76,6 +77,7 @@ export function SearchScreen({ navigation }: Props) {
     });
 
     const sectionConfig: { type: ResultType; title: string; icon: SectionData['icon'] }[] = [
+      { type: 'gene', title: 'Gènes', icon: 'Genes' },
       { type: 'researcher', title: 'Chercheurs', icon: 'Researchers' },
       { type: 'article', title: 'Articles', icon: 'Articles' },
       { type: 'conference', title: 'Conférences', icon: 'Conferences' },
@@ -91,8 +93,14 @@ export function SearchScreen({ navigation }: Props) {
       }));
   }, [results]);
 
-  const navigateToResult = (result: SearchResult) => {
+  const navigateToResult = (result: GlobalSearchResult) => {
     switch (result.type) {
+      case 'gene':
+        navigation.push('GeneDetail', { 
+          symbol: result.data.symbol, 
+          organism: result.data.organism 
+        });
+        break;
       case 'researcher':
         navigation.push('ResearcherDetail', { researcherId: result.data.id });
         break;
@@ -107,6 +115,7 @@ export function SearchScreen({ navigation }: Props) {
 
   const getTypeLabel = (type: string) => {
     switch (type) {
+      case 'gene': return 'Gène';
       case 'researcher': return 'Chercheur';
       case 'article': return 'Article';
       case 'conference': return 'Conférence';
@@ -116,6 +125,7 @@ export function SearchScreen({ navigation }: Props) {
 
   const getTypeIcon = (type: string): keyof typeof import('../components/Icons').Icons => {
     switch (type) {
+      case 'gene': return 'dna';
       case 'researcher': return 'people';
       case 'article': return 'doc';
       case 'conference': return 'calendar';
@@ -123,11 +133,15 @@ export function SearchScreen({ navigation }: Props) {
     }
   };
 
-  const renderResult = ({ item }: { item: SearchResult }) => {
+  const renderResult = ({ item }: { item: GlobalSearchResult }) => {
     let title = '';
     let subtitle = '';
 
     switch (item.type) {
+      case 'gene':
+        title = item.data.symbol;
+        subtitle = item.data.name || item.data.organism || '';
+        break;
       case 'researcher':
         title = item.data.name;
         subtitle = item.data.institution || '';
@@ -194,7 +208,7 @@ export function SearchScreen({ navigation }: Props) {
         <Icon name="search" size={18} color={colors.textMuted} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Chercheurs, articles, conférences..."
+          placeholder="Gènes, chercheurs, articles..."
           placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={setQuery}
@@ -218,7 +232,12 @@ export function SearchScreen({ navigation }: Props) {
         sections.length > 0 ? (
           <SectionList
             sections={sections}
-            keyExtractor={(item, index) => `${item.type}_${item.data.id}_${index}`}
+            keyExtractor={(item, index) => {
+              if (item.type === 'gene') {
+                return `gene_${item.data.symbol}_${index}`;
+              }
+              return `${item.type}_${item.data.id}_${index}`;
+            }}
             renderItem={renderResult}
             renderSectionHeader={renderSectionHeader}
             stickySectionHeadersEnabled
@@ -247,7 +266,7 @@ export function SearchScreen({ navigation }: Props) {
             Recherchez dans votre base de connaissances
           </Text>
           <Text style={[styles.hintText, { color: colors.textMuted }]}>
-            Chercheurs, articles, conférences
+            Gènes, chercheurs, articles, conférences
           </Text>
         </View>
       )}

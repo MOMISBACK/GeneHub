@@ -1,6 +1,6 @@
 # GeneHub - Plan de Développement
 
-> Mis à jour le 11 Janvier 2026
+> Mis à jour le 12 Janvier 2026
 
 ## 📊 État Actuel
 
@@ -9,28 +9,154 @@
 | **Auth Google** | ✅ | Fonctionne sur Dev Build uniquement |
 | **API Gènes** | ✅ | NCBI, UniProt, BioCyc, STRING, PDB |
 | **Knowledge Base API** | ✅ | 8 services modularisés |
-| **Inbox (Capture rapide)** | ✅ | PMID/DOI/URL/text auto-detect |
+| **Inbox (Capture rapide)** | ✅ | PMID/DOI/URL/text + filtrage status |
+| **Inbox → Note linking** | ✅ | Lier texte à gène/chercheur/article/conférence |
 | **PubMed Import** | ✅ | PMID → Article avec métadonnées |
 | **Crossref Import** | ✅ | DOI → Article avec métadonnées |
+| **Crossref Search** | ✅ | ✨ Autocomplete titre dans nouvel article |
+| **Import Article Rapide** | ✅ | ✨ DOI/PMID auto-fetch dans modal |
 | **Notes globales** | ✅ | NotesScreen avec filtres |
 | **Collections** | ✅ | Migration 007, UI complète |
 | **Privacy & Export** | ✅ | PrivacyScreen, BibTeX/MD/JSON |
-| **Researcher Card QR** | ✅ | Partage via QR code (privacy by design) |
+| **Researcher Card QR** | ⚠️ | Temporairement désactivé (module natif) |
 | **Écrans** | ✅ | 19 écrans complets |
-| **Tests** | ✅ | 225 tests passent |
+| **Tests** | ✅ | 254 tests passent |
 | **TypeScript** | ✅ | 0 erreurs |
 | **RLS (Row Level Security)** | ✅ | Audit complet + Migration 005 |
 | **Articles external_source/id** | ✅ | Migration 006 |
 | **Déduplication articles** | ✅ | Index unique (external_source, external_id) |
+| **Reset Database** | ✅ | ✨ Migration 008 - clean slate |
 | **Sentry Monitoring** | ✅ | @sentry/react-native installé |
 | **Icons SVG** | ✅ | react-native-svg (nav bar) |
 | **Zustand (Sync Store)** | ✅ | Pending/failed mutations tracking |
 
 ---
 
-## ✅ Researcher Card QR (11 Jan 2026)
+## ✅ Import Article Amélioré (12 Jan 2026)
 
-### Concept
+### Fonctionnalités
+- [x] **Import rapide DOI/PMID** - Coller identifiant, auto-fetch métadonnées
+- [x] **Auto-détection** - DOI (10.xxxx/...) ou PMID (7-8 digits) reconnus automatiquement
+- [x] **Aperçu** - Affichage titre, journal, année avant ajout
+- [x] **Autocomplete titre** - Suggestions Crossref en mode manuel
+- [x] **Sélection suggestion** - Remplit automatiquement tous les champs
+
+### Implémentation
+- `src/screens/ArticlesScreen.tsx` - Modal avec deux modes (rapide/manuel)
+- `src/lib/crossref.ts` - `searchCrossrefByTitle()` pour autocomplete
+- `src/lib/pubmed.ts` - `fetchPubMedArticle()` pour PMID
+
+### UX
+1. **Mode Import Rapide** (défaut):
+   - Champ unique pour DOI ou PMID
+   - Bouton recherche → fetch API → aperçu
+   - Bouton Ajouter pour sauvegarder
+   
+2. **Mode Saisie Manuelle**:
+   - Champ titre avec autocomplete (debounced 400ms)
+   - Suggestions Crossref cliquables
+   - Champs journal, année, DOI, PMID éditables
+
+---
+
+## ✅ Reset Database (12 Jan 2026)
+
+### Migration 008
+- [x] **Suppression données user** - tags, notes, inbox, collections
+- [x] **Suppression relations** - article_researchers, gene_articles, etc.
+- [x] **Suppression entités** - articles, researchers, conferences
+- [x] **Re-seed propre** - Données sample sans conflits
+
+### Objectif
+Résoudre les incohérences causées par l'évolution du système de tags:
+- Migration 003: entity_type/entity_id sur tags
+- Migration 005: user_id sur tags (RLS)
+- Anciennes données sans user_id
+
+### Exécution
+```bash
+# Appliquer la migration
+npm run db:migrate
+
+# Ou reset complet
+npm run db:reset
+```
+
+## ✅ Notes Cross-Entity via Tags (12 Jan 2026)
+
+### Fonctionnalités
+- [x] **Notes liées via tags** - Une note peut apparaître sur plusieurs entités
+- [x] **Indicateur visuel** - Badge "Liée via tag" + bordure colorée
+- [x] **Déduplication** - Évite les doublons entre notes directes et liées
+- [x] **Synchronisation** - Logic répliquée dans `knowledge.ts` et `notes.service.ts`
+- [x] **UX simplifiée** - Bouton "+ tag" ouvre directement le modal de création
+
+### Principe
+Une note apparaît sur une entité si:
+1. Créée directement pour cette entité (`entity_type` + `entity_id`)
+2. Possède un tag lié à cette entité (`tag.entity_type` + `tag.entity_id`)
+
+### Workflow d'ajout de tag
+1. Cliquer sur "+ tag" sur une note
+2. Modal de création s'ouvre directement
+3. Créer le tag avec nom, couleur, et optionnellement lien à une entité
+4. Tag ajouté automatiquement à la note
+
+### Exemple d'usage
+1. Créer note sur gène CnoX: "Collaboration intéressante"
+2. Ajouter tag `#dupont` (lié au chercheur Dupont)
+3. La note apparaît sur:
+   - Page CnoX (note directe)
+   - Page Dupont (via tag `#dupont`)
+
+### Tests (29 tests)
+- [x] `__tests__/lib/note-linking-logic.test.ts` - 20 tests (logique pure)
+- [x] `__tests__/lib/note-linking-scenarios.test.ts` - 9 tests (scénarios intégration)
+- [x] Déduplication de notes
+- [x] Tri par date (updated_at desc)
+- [x] Flag `isLinkedViaTag` correct
+- [x] Format entity_id (lowercase + underscore)
+- [x] Format tag name (symbol-orgcode)
+- [x] Règles de visibilité
+- [x] Scénarios cross-entity
+- [x] Gestion des edge cases
+
+### Documentation
+- [x] ARCHITECTURE.md - Section "Cross-Entity Notes via Tags"
+- [x] Principes, exemples, implémentation
+
+---
+
+## ✅ Inbox Amélioré (12 Jan 2026)
+
+### Fonctionnalités
+- [x] **Onglets de filtrage** - Inbox / Convertis / Archivés
+- [x] **Compteurs** - Nombre d'items par statut
+- [x] **Accès archivés** - Visualiser et restaurer les items archivés
+- [x] **Liaison texte → entité** - Lier un texte à une fiche existante
+- [x] **EntityPicker modal** - Sélection gène/chercheur/article/conférence
+
+### Composants
+- [x] `src/components/inbox/EntityPicker.tsx` - Modal de sélection d'entité
+- [x] `src/screens/InboxScreen.tsx` - UI mise à jour avec onglets
+
+### Workflow conversion texte
+1. Cliquer sur item texte
+2. Choisir "📝 Lier à une fiche existante"
+3. EntityPicker s'ouvre avec 4 onglets (Gènes, Chercheurs, Articles, Conférences)
+4. Rechercher et sélectionner l'entité
+5. Note créée et item marqué comme converti
+
+---
+
+## ⚠️ QR Code (Désactivé temporairement)
+
+Problème: Les modules natifs `react-native-qrcode-svg` et `expo-camera` causent des crashes.
+Solution temporaire: Écrans `MyQrScreen` et `ScanQrScreen` remplacés par placeholders.
+
+---
+
+## Researcher Card QR (Historique - 11 Jan 2026)
 - **Model A**: QR contient les données directement (pas de serveur)
 - **Privacy by design**: L'utilisateur choisit chaque champ à partager
 - **Pas de réseau social**: Échange 1-to-1 uniquement

@@ -19,6 +19,8 @@ import {
   Text,
   View,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +30,7 @@ import { useGeneData, useFunctionReferences, useNotes } from '../lib/hooks';
 import { Card, CollapsibleCard, SourceItem, StructureItem } from '../components/gene-detail';
 import { NotesSection } from '../components/notes';
 import { AddToCollectionButton } from '../components/collections';
+import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
@@ -45,16 +48,16 @@ export function GeneDetailScreen({ route }: Props) {
   // Use hooks for data management
   const { loading, data, biocycData, error, isSaved, refresh, toggleSave } = useGeneData(symbol, organism, t);
 
-  // Gene entity ID for notes (symbol_organism)
-  const geneEntityId = `${symbol}_${organism}`;
+  // Gene entity ID for notes (symbol_organism) - lowercase for consistency
+  const geneEntityId = `${symbol.toLowerCase()}_${organism.toLowerCase()}`;
   const { notes, loading: notesLoading, refresh: refreshNotes } = useNotes('gene', geneEntityId);
 
   // UI state
-  const [showMenu, setShowMenu] = useState(false);
   const [showAllInteractors, setShowAllInteractors] = useState(false);
   const [expandedFunction, setExpandedFunction] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [refsExpanded, setRefsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
   // Parse function text for references
   const functionText = data?.function ?? '';
@@ -125,12 +128,16 @@ export function GeneDetailScreen({ route }: Props) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <View style={styles.titleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
+            <Icon name="arrowBack" size={22} color={colors.text} />
           </Pressable>
           <View style={styles.titleContent}>
             <Text style={[styles.geneSymbol, { color: colors.text }]}>{data.symbol}</Text>
@@ -140,13 +147,28 @@ export function GeneDetailScreen({ route }: Props) {
           <Pressable onPress={toggleSave} style={styles.starBtn} hitSlop={8}>
             <Icon name={isSaved ? 'star' : 'starOutline'} size={18} color={isSaved ? colors.text : colors.textMuted} />
           </Pressable>
-          <Pressable onPress={() => setShowMenu(true)} style={styles.menuBtn}>
-            <Text style={[styles.menuIcon, { color: colors.textMuted }]}>⋯</Text>
+          <Pressable onPress={refresh} style={styles.refreshBtn} hitSlop={8}>
+            <Icon name="refresh" size={20} color={colors.textMuted} />
           </Pressable>
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {/* View Mode Toggle */}
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} notesCount={notes.length} />
+
+      {/* Notes Mode */}
+      {viewMode === 'notes' ? (
+        <NotesFullView
+          entityType="gene"
+          entityId={geneEntityId}
+          entityName={data.symbol}
+          notes={notes}
+          onRefresh={refreshNotes}
+          loading={notesLoading}
+        />
+      ) : (
+        /* Recap Mode */
+        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Sources Card - collapsible */}
         <CollapsibleCard 
           title={t.geneDetail.sources} 
@@ -345,38 +367,9 @@ export function GeneDetailScreen({ route }: Props) {
           </View>
         </Card>
 
-        {/* Notes */}
-        <NotesSection
-          entityType="gene"
-          entityId={geneEntityId}
-          notes={notes}
-          onRefresh={refreshNotes}
-          loading={notesLoading}
-        />
-
         <View style={{ height: 120 }} />
       </ScrollView>
-
-      {/* Overflow Menu */}
-      <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
-        <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
-          <View style={[styles.menu, { backgroundColor: colors.card }]}>
-            <Pressable style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]} onPress={() => { setShowMenu(false); toggleSave(); }}>
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                {isSaved ? `☆ ${t.geneDetail.menu.removeFromFavorites}` : `★ ${t.geneDetail.menu.addToFavorites}`}
-              </Text>
-            </Pressable>
-            <Pressable style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]} onPress={() => { setShowMenu(false); refresh(); }}>
-              <Text style={[styles.menuItemText, { color: colors.text }]}>{t.geneDetail.menu.refresh}</Text>
-            </Pressable>
-            {data.links?.ncbi && (
-              <Pressable style={styles.menuItem} onPress={() => { setShowMenu(false); Linking.openURL(data.links.ncbi!); }}>
-                <Text style={[styles.menuItemText, { color: colors.text }]}>{t.geneDetail.menu.openOnNcbi}</Text>
-              </Pressable>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
+      )}
 
       {/* Full Interactors Modal */}
       <Modal
@@ -407,7 +400,7 @@ export function GeneDetailScreen({ route }: Props) {
           </View>
         </Pressable>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -424,15 +417,13 @@ const styles = StyleSheet.create({
   
   // Header
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
-  backBtn: { padding: spacing.sm },
-  backIcon: { fontSize: 24, fontWeight: '300' },
-  titleContent: { flex: 1, marginLeft: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  backBtn: { padding: spacing.xs },
+  titleContent: { flex: 1, marginLeft: spacing.xs },
   geneSymbol: { fontSize: 20, fontWeight: '700', fontStyle: 'italic' },
   geneOrganism: { fontSize: 13, fontStyle: 'italic' },
   starBtn: { padding: spacing.sm },
-  menuBtn: { padding: spacing.sm },
-  menuIcon: { fontSize: 20, fontWeight: '600' },
+  refreshBtn: { padding: spacing.sm },
   
   // Scroll
   scroll: { flex: 1 },

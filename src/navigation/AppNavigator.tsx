@@ -18,6 +18,7 @@ import { CollectionDetailScreen } from '../screens/CollectionDetailScreen';
 import { PrivacyScreen } from '../screens/PrivacyScreen';
 import { MyQrScreen } from '../screens/MyQrScreen';
 import { ScanQrScreen } from '../screens/ScanQrScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { MainTabs } from './MainTabs';
 import type { RootStackParamList } from './types';
 import { useTheme } from '../theme';
@@ -147,6 +148,11 @@ export function AppNavigator() {
             <Stack.Screen 
               name="ScanQr" 
               component={ScanQrScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen} 
               options={{ headerShown: false }} 
             />
           </>

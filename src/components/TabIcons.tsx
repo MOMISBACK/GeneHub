@@ -162,6 +162,62 @@ export function InboxIcon({ size = 24, color = '#000' }: TabIconProps) {
 }
 
 /**
+ * Collections Icon - Folder for Collections
+ */
+export function CollectionsIcon({ size = 24, color = '#000' }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Folder tab */}
+      <Path
+        d="M10 4H4C2.89543 4 2 4.89543 2 6V18C2 19.1046 2.89543 20 4 20H20C21.1046 20 22 19.1046 22 18V8C22 6.89543 21.1046 6 20 6H12L10 4Z"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * Privacy Icon - Shield with lock for Privacy
+ */
+export function PrivacyIcon({ size = 24, color = '#000' }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Shield outline */}
+      <Path
+        d="M12 2L4 6V12C4 16.4183 7.58172 20 12 22C16.4183 20 20 16.4183 20 12V6L12 2Z"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Lock */}
+      <Rect
+        x="9"
+        y="12"
+        width="6"
+        height="5"
+        rx="1"
+        stroke={color}
+        strokeWidth={1.5}
+        fill="none"
+      />
+      <Path
+        d="M10 12V10C10 8.89543 10.8954 8 12 8C13.1046 8 14 8.89543 14 10V12"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/**
  * Map of tab names to icon components
  */
 export const TabIconMap = {
@@ -170,6 +226,8 @@ export const TabIconMap = {
   Articles: ArticleIcon,
   Conferences: CalendarIcon,
   Inbox: InboxIcon,
+  Collections: CollectionsIcon,
+  Privacy: PrivacyIcon,
 } as const;
 
 /**

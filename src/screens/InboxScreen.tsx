@@ -1,5 +1,10 @@
 /**
  * InboxScreen - Quick capture tab for links, PMIDs, DOIs, and notes
+ * 
+ * Features:
+ * - Quick add PMID, DOI, URL, or text notes
+ * - Filter by status: Inbox / Converted / Archived
+ * - Convert items to articles or link text to existing entities
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +21,8 @@ import {
   Alert,
   ActivityIndicator,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +30,7 @@ import type { MainTabsParamList, RootStackParamList } from '../navigation/types'
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
+import { GlobalSearchButton, SettingsButton } from '../components/header';
 import { useInbox } from '../lib/hooks';
 import { 
   getTypeLabel, 
@@ -31,8 +39,21 @@ import {
   convertPmidToArticle,
   convertDoiToArticle,
   convertUrlToArticle,
+  convertTextToNote,
 } from '../lib/inbox';
-import type { InboxItem, InboxDetectedType } from '../types/inbox';
+import { EntityPicker, SelectedEntity } from '../components/inbox/EntityPicker';
+import { TagSelectorInline } from '../components/inbox/TagSelectorInline';
+import { createNoteForEntity } from '../lib/knowledge/notes.service';
+import type { InboxItem, InboxDetectedType, InboxStatus } from '../types/inbox';
+import type { Tag } from '../types/knowledge';
+
+type StatusFilter = InboxStatus | 'all';
+
+const STATUS_TABS: { key: StatusFilter; label: string; icon: string }[] = [
+  { key: 'inbox', label: 'Inbox', icon: '▣' },
+  { key: 'converted', label: 'Convertis', icon: '✓' },
+  { key: 'archived', label: 'Archivés', icon: '▤' },
+];
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabsParamList, 'Inbox'>,
@@ -45,12 +66,22 @@ export function InboxScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
 
-  const { items, loading, error, counts, refresh, add, archive, remove } = useInbox();
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('inbox');
+  const { items, loading, error, counts, refresh, add, archive, restore, remove } = useInbox({ status: statusFilter });
+  
   const [input, setInput] = useState('');
   const [detectedType, setDetectedType] = useState<InboxDetectedType | null>(null);
   const [adding, setAdding] = useState(false);
   const [converting, setConverting] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
+
+  // Entity picker for linking text to entities
+  const [showEntityPicker, setShowEntityPicker] = useState(false);
+  const [itemToLink, setItemToLink] = useState<InboxItem | null>(null);
+
+  // Tags for auto-linking
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
   // Live detection as user types
   const handleInputChange = useCallback((text: string) => {
@@ -63,7 +94,7 @@ export function InboxScreen({ navigation }: Props) {
     }
   }, []);
 
-  // Quick add
+  // Quick add with auto-linking via tags
   const handleAdd = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -72,15 +103,53 @@ export function InboxScreen({ navigation }: Props) {
     Keyboard.dismiss();
     
     try {
-      const item = await add(trimmed);
-      if (item) {
+      // Get entity-linked tags
+      const entityLinkedTags = selectedTags.filter(t => t.entity_type && t.entity_id);
+      
+      // If it's text and we have entity-linked tags, auto-create notes
+      if (detectedType === 'text' && entityLinkedTags.length > 0) {
+        let successCount = 0;
+        const entityNames: string[] = [];
+        
+        for (const tag of entityLinkedTags) {
+          try {
+            await createNoteForEntity(
+              tag.entity_type as 'gene' | 'researcher' | 'article' | 'conference',
+              tag.entity_id!,
+              trimmed
+            );
+            successCount++;
+            entityNames.push(tag.name);
+          } catch (e) {
+            console.error(`Error creating note for ${tag.name}:`, e);
+          }
+        }
+
+        if (successCount > 0) {
+          Alert.alert(
+            'Notes créées ✓',
+            `Note ajoutée à ${entityNames.join(', ')}`,
+            [{ text: 'OK' }]
+          );
+        }
+
         setInput('');
         setDetectedType(null);
+        setSelectedTags([]);
+      } else {
+        // Normal add to inbox
+        const tagNames = selectedTags.map(t => t.name);
+        const item = await add(trimmed, { tags: tagNames });
+        if (item) {
+          setInput('');
+          setDetectedType(null);
+          setSelectedTags([]);
+        }
       }
     } finally {
       setAdding(false);
     }
-  }, [input, add]);
+  }, [input, add, detectedType, selectedTags]);
 
   // Convert PMID to Article
   const handleConvertPmid = useCallback(async (item: InboxItem) => {
@@ -151,6 +220,47 @@ export function InboxScreen({ navigation }: Props) {
     }
   }, [navigation, refresh]);
 
+  // Handle entity selection for linking text to entity
+  const handleEntitySelect = useCallback(async (entity: SelectedEntity) => {
+    if (!itemToLink) return;
+
+    setConverting(itemToLink.id);
+    try {
+      const result = await convertTextToNote(itemToLink.id, {
+        entityType: entity.type,
+        entityId: entity.id,
+        useRawAsContent: true,
+      });
+      if (result.success) {
+        Alert.alert(
+          'Note créée ✓',
+          `Note liée à ${entity.displayName}`,
+          [{ text: 'OK' }]
+        );
+        refresh();
+      } else {
+        Alert.alert('Erreur', result.error || 'Création échouée');
+      }
+    } finally {
+      setConverting(null);
+      setItemToLink(null);
+    }
+  }, [itemToLink, refresh]);
+
+  // Open entity picker
+  const handleLinkToEntity = useCallback((item: InboxItem) => {
+    setItemToLink(item);
+    setShowEntityPicker(true);
+  }, []);
+
+  // Restore from archived
+  const handleRestore = useCallback(async (id: string) => {
+    const success = await restore(id);
+    if (success) {
+      refresh();
+    }
+  }, [restore, refresh]);
+
   // Swipe to archive
   const handleArchive = useCallback(async (id: string) => {
     Alert.alert(
@@ -217,15 +327,29 @@ export function InboxScreen({ navigation }: Props) {
     
     if (item.detected_type === 'text') {
       actions.push({
-        text: '📝 Créer Note',
-        onPress: () => navigation.navigate('CreateNote' as any, { inboxItemId: item.id }),
+        text: '📝 Lier à une fiche existante',
+        onPress: () => handleLinkToEntity(item),
       });
     }
 
-    // Common actions
+    // Actions for archived items
+    if (item.status === 'archived') {
+      actions.push({
+        text: '↩️ Restaurer dans Inbox',
+        onPress: () => handleRestore(item.id),
+      });
+    } else {
+      // Common actions for non-archived
+      actions.push({
+        text: 'Archiver',
+        onPress: () => archive(item.id),
+      });
+    }
+
     actions.push({
-      text: 'Archiver',
-      onPress: () => archive(item.id),
+      text: 'Supprimer',
+      style: 'destructive',
+      onPress: () => handleDelete(item.id),
     });
 
     Alert.alert(
@@ -233,7 +357,7 @@ export function InboxScreen({ navigation }: Props) {
       item.normalized || item.raw.slice(0, 100),
       actions
     );
-  }, [converting, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, navigation]);
+  }, [converting, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, handleLinkToEntity, handleRestore]);
 
   const renderItem = useCallback(({ item }: { item: InboxItem }) => {
     const isConverting = converting === item.id;
@@ -242,8 +366,6 @@ export function InboxScreen({ navigation }: Props) {
       <Pressable
         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
         onPress={() => handleItemPress(item)}
-        onLongPress={() => handleDelete(item.id)}
-        delayLongPress={500}
         disabled={isConverting}
       >
         {/* Type badge */}
@@ -280,73 +402,133 @@ export function InboxScreen({ navigation }: Props) {
           </View>
         )}
         
-        {/* Archive button */}
+        {/* Delete button */}
         {!isConverting && (
           <Pressable
-            style={[styles.archiveBtn, { backgroundColor: colors.bg }]}
-            onPress={() => handleArchive(item.id)}
+            style={[styles.deleteBtn, { backgroundColor: colors.bg }]}
+            onPress={() => handleDelete(item.id)}
             hitSlop={8}
           >
-            <Icon name="save" size={16} color={colors.textMuted} />
+            <Icon name="close" size={16} color={colors.textMuted} />
           </Pressable>
         )}
       </Pressable>
     );
-  }, [colors, converting, handleItemPress, handleArchive, handleDelete]);
+  }, [colors, converting, handleItemPress, handleDelete]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Inbox</Text>
-        <View style={styles.headerBadge}>
-          <Text style={[styles.headerBadgeText, { color: colors.accent }]}>
-            {counts.inbox}
-          </Text>
+        <View style={styles.headerActions}>
+          <GlobalSearchButton />
+          <SettingsButton />
         </View>
       </View>
 
-      {/* Quick input */}
-      <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
-        <TextInput
-          ref={inputRef}
-          style={[styles.input, { color: colors.text }]}
-          placeholder="PMID, DOI, URL, ou note..."
-          placeholderTextColor={colors.textMuted}
-          value={input}
-          onChangeText={handleInputChange}
-          onSubmitEditing={handleAdd}
-          returnKeyType="send"
-          multiline={false}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        
-        {/* Live detection indicator */}
-        {detectedType && (
-          <View style={[styles.detectedBadge, { backgroundColor: getTypeColor(detectedType) }]}>
-            <Text style={styles.detectedBadgeText}>
-              {getTypeLabel(detectedType)}
-            </Text>
-          </View>
-        )}
-        
-        {/* Add button */}
-        <Pressable
-          style={[
-            styles.addBtn,
-            { backgroundColor: input.trim() ? colors.accent : colors.surface }
-          ]}
-          onPress={handleAdd}
-          disabled={!input.trim() || adding}
-        >
-          {adding ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Icon name="add" size={20} color={input.trim() ? '#fff' : colors.textMuted} />
-          )}
-        </Pressable>
+      {/* Status filter tabs */}
+      <View style={styles.filterTabs}>
+        {STATUS_TABS.map(tab => {
+          const count = tab.key === 'all' ? counts.inbox + counts.archived + counts.converted : counts[tab.key];
+          const isActive = statusFilter === tab.key;
+          
+          return (
+            <Pressable
+              key={tab.key}
+              style={[
+                styles.filterTab,
+                isActive && { backgroundColor: colors.accent },
+                !isActive && { backgroundColor: colors.surface, borderColor: colors.borderHairline, borderWidth: 1 },
+              ]}
+              onPress={() => setStatusFilter(tab.key)}
+            >
+              <Text style={[
+                styles.filterTabLabel,
+                { color: isActive ? '#000' : colors.text },
+              ]}>
+                {tab.label}
+              </Text>
+              <View style={[
+                styles.filterTabCount,
+                { backgroundColor: isActive ? 'rgba(0,0,0,0.15)' : colors.bg },
+              ]}>
+                <Text style={[
+                  styles.filterTabCountText,
+                  { color: isActive ? '#000' : colors.textMuted },
+                ]}>
+                  {count}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
+
+      {/* Quick input - only show on inbox tab */}
+      {statusFilter === 'inbox' && (
+        <>
+          <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, { color: colors.text }]}
+              placeholder="PMID, DOI, URL, ou note..."
+              placeholderTextColor={colors.textMuted}
+              value={input}
+              onChangeText={handleInputChange}
+              onSubmitEditing={handleAdd}
+              returnKeyType="send"
+              multiline={false}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            
+            {/* Live detection indicator */}
+            {detectedType && (
+              <View style={[styles.detectedBadge, { backgroundColor: getTypeColor(detectedType) }]}>
+                <Text style={styles.detectedBadgeText}>
+                  {getTypeLabel(detectedType)}
+                </Text>
+              </View>
+            )}
+            
+            {/* Add button */}
+            <Pressable
+              style={[
+                styles.addBtn,
+                { backgroundColor: input.trim() ? colors.accent : colors.surface }
+              ]}
+              onPress={handleAdd}
+              disabled={!input.trim() || adding}
+            >
+              {adding ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Icon name="add" size={20} color={input.trim() ? '#fff' : colors.textMuted} />
+              )}
+            </Pressable>
+          </View>
+
+          {/* Tag selector for auto-linking - only show for text input */}
+          {input.trim().length > 0 && (
+            <View style={{ paddingHorizontal: spacing.lg }}>
+              <TagSelectorInline
+                selectedTags={selectedTags}
+                onTagsChange={setSelectedTags}
+              />
+              {selectedTags.some(t => t.entity_type) && detectedType === 'text' && (
+                <Text style={[styles.autoLinkInfo, { color: colors.textMuted }]}>
+                  ✓ La note sera automatiquement ajoutée aux fiches sélectionnées
+                </Text>
+              )}
+            </View>
+          )}
+        </>
+      )}
 
       {/* Content */}
       {loading && items.length === 0 ? (
@@ -364,10 +546,14 @@ export function InboxScreen({ navigation }: Props) {
         <View style={styles.center}>
           <Icon name="doc" size={48} color={colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Inbox vide
+            {statusFilter === 'inbox' && 'Inbox vide'}
+            {statusFilter === 'converted' && 'Aucun item converti'}
+            {statusFilter === 'archived' && 'Aucun item archivé'}
           </Text>
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-            Ajoutez un PMID, DOI, URL ou une note
+            {statusFilter === 'inbox' && 'Ajoutez un PMID, DOI, URL ou une note'}
+            {statusFilter === 'converted' && 'Les items convertis en articles ou notes apparaîtront ici'}
+            {statusFilter === 'archived' && 'Archivez des items pour les retrouver ici'}
           </Text>
         </View>
       ) : (
@@ -380,7 +566,17 @@ export function InboxScreen({ navigation }: Props) {
           onRefresh={refresh}
         />
       )}
-    </View>
+
+      {/* Entity picker modal */}
+      <EntityPicker
+        visible={showEntityPicker}
+        onClose={() => {
+          setShowEntityPicker(false);
+          setItemToLink(null);
+        }}
+        onSelect={handleEntitySelect}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -415,12 +611,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   title: {
-    ...typography.h2,
+    ...typography.h1,
   },
   headerBadge: {
     paddingHorizontal: spacing.sm,
@@ -428,6 +630,40 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     ...typography.caption,
+    fontWeight: '600',
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  filterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  filterTabIcon: {
+    fontSize: 12,
+  },
+  filterTabLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  filterTabCount: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  filterTabCountText: {
+    ...typography.caption,
+    fontSize: 10,
     fontWeight: '600',
   },
   inputContainer: {
@@ -539,11 +775,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  archiveBtn: {
+  deleteBtn: {
     width: 32,
     height: 32,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  autoLinkInfo: {
+    ...typography.caption,
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
   },
 });

@@ -22,6 +22,7 @@ import { Icon } from '../components/Icons';
 import { NotesSection } from '../components/notes';
 import { RelationPicker } from '../components/relations';
 import { EntityEditModal } from '../components/edit';
+import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
 import { getConference, linkConferenceToResearcher, linkGeneToConference, linkArticleToConference } from '../lib/knowledge';
 import { useNotes } from '../lib/hooks';
 import type { ConferenceWithRelations, Researcher, Article } from '../types/knowledge';
@@ -56,6 +57,7 @@ export function ConferenceDetailScreen({ route, navigation }: Props) {
   const [showArticlePicker, setShowArticlePicker] = useState(false);
   const [showGenePicker, setShowGenePicker] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,7 +136,22 @@ export function ConferenceDetailScreen({ route, navigation }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      {/* View Mode Toggle */}
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} notesCount={notes.length} />
+
+      {/* Notes Mode */}
+      {viewMode === 'notes' ? (
+        <NotesFullView
+          entityType="conference"
+          entityId={conferenceId}
+          entityName={conference.name}
+          notes={notes}
+          onRefresh={refreshNotes}
+          loading={notesLoading}
+        />
+      ) : (
+        /* Recap Mode */
+        <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* Info Card */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
           <Text style={[styles.name, { color: colors.text }]}>{conference.name}</Text>
@@ -252,16 +269,8 @@ export function ConferenceDetailScreen({ route, navigation }: Props) {
             </View>
           )}
         </View>
-
-        {/* Notes */}
-        <NotesSection
-          entityType="conference"
-          entityId={conferenceId}
-          notes={notes}
-          onRefresh={refreshNotes}
-          loading={notesLoading}
-        />
       </ScrollView>
+      )}
 
       {/* Relation Pickers */}
       <RelationPicker

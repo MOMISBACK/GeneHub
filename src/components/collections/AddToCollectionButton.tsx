@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { useTheme, typography, spacing, radius } from '../../theme';
+import { TabIcon } from '../TabIcons';
 import {
   listCollections,
   createCollection,
@@ -163,7 +164,7 @@ export function AddToCollectionButton({ entityType, entityId, displayName }: Pro
         style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
         onPress={() => setShowModal(true)}
       >
-        <Text style={styles.buttonIcon}>{hasSelection ? '📁' : '➕'}</Text>
+        <TabIcon name="Collections" size={16} color={hasSelection ? colors.accent : colors.textMuted} />
         <Text style={[styles.buttonText, { color: colors.text }]}>
           {hasSelection ? `${selectedIds.size} collection${selectedIds.size > 1 ? 's' : ''}` : 'Collection'}
         </Text>

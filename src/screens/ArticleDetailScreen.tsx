@@ -23,6 +23,7 @@ import { NotesSection } from '../components/notes';
 import { AddToCollectionButton } from '../components/collections';
 import { RelationPicker } from '../components/relations';
 import { EntityEditModal } from '../components/edit';
+import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
 import { getArticle, linkArticleToResearcher, linkGeneToArticle } from '../lib/knowledge';
 import { useNotes } from '../lib/hooks';
 import type { ArticleWithRelations, Researcher } from '../types/knowledge';
@@ -46,6 +47,7 @@ export function ArticleDetailScreen({ route, navigation }: Props) {
   const [showAuthorPicker, setShowAuthorPicker] = useState(false);
   const [showGenePicker, setShowGenePicker] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,7 +133,22 @@ export function ArticleDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      {/* View Mode Toggle */}
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} notesCount={notes.length} />
+
+      {/* Notes Mode */}
+      {viewMode === 'notes' ? (
+        <NotesFullView
+          entityType="article"
+          entityId={articleId}
+          entityName={article.title.slice(0, 40) + (article.title.length > 40 ? '...' : '')}
+          notes={notes}
+          onRefresh={refreshNotes}
+          loading={notesLoading}
+        />
+      ) : (
+        /* Recap Mode */
+        <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* Title Card */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
           <Text style={[styles.title, { color: colors.text }]}>{article.title}</Text>
@@ -211,16 +228,8 @@ export function ArticleDetailScreen({ route, navigation }: Props) {
             </View>
           )}
         </View>
-
-        {/* Notes */}
-        <NotesSection
-          entityType="article"
-          entityId={articleId}
-          notes={notes}
-          onRefresh={refreshNotes}
-          loading={notesLoading}
-        />
       </ScrollView>
+      )}
 
       {/* Relation Pickers */}
       <RelationPicker

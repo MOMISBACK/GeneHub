@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { signInWithGoogle } from '../lib/auth';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { useTheme } from '../theme';
 import { useI18n } from '../i18n';
 
@@ -11,6 +12,13 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Configuration manquante',
+        'Supabase n\'est pas configuré. Contactez le développeur.',
+      );
+      return;
+    }
     try {
       setLoading(true);
       await signInWithGoogle();

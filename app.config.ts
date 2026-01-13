@@ -1,5 +1,18 @@
 import type { ExpoConfig } from 'expo/config';
 
+// Only enable Sentry source map uploads when credentials are available
+const sentryConfig = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+  ? {
+      organization: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+    }
+  : {
+      // Disable source map uploads when Sentry is not configured
+      organization: '',
+      project: '',
+      url: 'https://sentry.io/',
+    };
+
 const config: ExpoConfig = {
   name: 'GeneHub Bacteria',
   slug: 'genehub-bacteria',
@@ -11,13 +24,10 @@ const config: ExpoConfig = {
     'expo-localization',
     [
       '@sentry/react-native',
-      {
-        organization: process.env.SENTRY_ORG,
-        project: process.env.SENTRY_PROJECT,
-      },
+      sentryConfig,
     ],
     [
-      'expo-barcode-scanner',
+      'expo-camera',
       {
         cameraPermission: 'Allow GeneHub to access camera to scan QR codes.',
       },

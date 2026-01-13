@@ -38,6 +38,7 @@ export interface InboxItem {
 
 export type InboxItemInsert = {
   raw: string;
+  user_id: string;
   detected_type?: InboxDetectedType | null;
   normalized?: string | null;
   title?: string | null;

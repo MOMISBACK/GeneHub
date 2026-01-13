@@ -119,7 +119,6 @@ export function CollectionsScreen({ navigation }: Props) {
       
       <View style={styles.collectionInfo}>
         <View style={styles.nameRow}>
-          {item.is_pinned && <Text style={styles.pinIcon}>📌</Text>}
           <Text style={[styles.collectionName, { color: colors.text }]} numberOfLines={1}>
             {item.name}
           </Text>

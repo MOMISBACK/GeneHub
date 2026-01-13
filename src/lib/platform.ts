@@ -112,19 +112,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Check if a native module is available
- * Useful for graceful degradation
- */
-export function isModuleAvailable(moduleName: string): boolean {
-  try {
-    require(moduleName);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Storage abstraction that works on both platforms
  * AsyncStorage works on web via localStorage polyfill
  */

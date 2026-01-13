@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { supabaseWithAuth } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -9,19 +10,28 @@ const log = (...args: unknown[]) => __DEV__ && console.log(...args);
 export async function signInWithGoogle(): Promise<void> {
   log('[auth] ========== STARTING GOOGLE SIGN IN ==========');
   
-  // For Dev Build: FORCE custom scheme, don't let makeRedirectUri pick exp://
-  // makeRedirectUri with tunnel mode returns exp:// which browsers can't handle
-  const redirectTo = 'genehub://auth/callback';
-  log('[auth] 1. redirectTo (forced custom scheme) =', redirectTo);
+  // Mobile: Custom scheme for deep linking
+  // Web: Don't specify redirectTo, let Supabase handle it automatically
+  const options: any = Platform.OS === 'web' 
+    
+    // For web, we don't need a deep link, Supabase redirects to the current URL.
+        // It's crucial that this URL is listed in Supabase's "Site URLs".
+    ? {
+        redirectTo: window.location.origin,
+      }
+    : { 
+      // For mobile, we need a custom scheme for deep linking.
+        redirectTo: 'genehub://auth/callback',
+        skipBrowserRedirect: true 
+      };
+  
+  log('[auth] 1. Platform.OS =', Platform.OS);
 
   // Log Supabase OAuth request
   log('[auth] 2. Calling supabase.auth.signInWithOAuth...');
   const { data, error } = await supabaseWithAuth.auth.signInWithOAuth({
     provider: 'google',
-    options: {
-      redirectTo,
-      skipBrowserRedirect: true,
-    },
+    options,
   });
 
   if (error) {
@@ -34,9 +44,16 @@ export async function signInWithGoogle(): Promise<void> {
   }
   
   log('[auth] 3. Got OAuth URL (first 100 chars):', data.url.substring(0, 100) + '...');
-  log('[auth] 4. Opening WebBrowser.openAuthSessionAsync...');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  // Web: Supabase handles everything automatically
+  if (Platform.OS === 'web') {
+    log('[auth] 4. Web platform - Supabase handles redirect automatically');
+    return;
+  }
+
+  // Mobile: Use WebBrowser to handle OAuth flow
+  log('[auth] 4. Mobile platform - Opening WebBrowser.openAuthSessionAsync...');
+  const result = await WebBrowser.openAuthSessionAsync(data.url, 'genehub://auth/callback');
   
   log('[auth] 5. WebBrowser result type =', result.type);
   if (result.type === 'success') {
@@ -51,7 +68,7 @@ export async function signInWithGoogle(): Promise<void> {
 
   if (result.type !== 'success' || !result.url) {
     throw new Error(
-      `Connexion interrompue (type=${result.type}). Vérifie que "${redirectTo}" est bien ajouté dans Supabase → Authentication → URL Configuration → Additional Redirect URLs.`,
+      `Connexion interrompue (type=${result.type}). Vérifie que "genehub://auth/callback" est bien ajouté dans Supabase → Authentication → URL Configuration → Additional Redirect URLs.`,
     );
   }
 

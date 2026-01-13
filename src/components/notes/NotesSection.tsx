@@ -52,6 +52,11 @@ export function NotesSection({ entityType, entityId, notes, onRefresh, loading }
   const [showTagModal, setShowTagModal] = useState<string | null>(null); // noteId to add tag to
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
+  // Format tag display name - tags are already properly formatted
+  const getTagDisplayName = (tag: Tag): string => {
+    return tag.name;
+  };
+
   // Navigate to entity when clicking on a linked tag
   const handleTagPress = (tag: Tag) => {
     if (!tag.entity_type || !tag.entity_id) {
@@ -311,7 +316,7 @@ export function NotesSection({ entityType, entityId, notes, onRefresh, loading }
                         />
                       )}
                       <Text style={[styles.tagText, { color: tag.color || colors.accent }]}>
-                        #{tag.name}
+                        #{getTagDisplayName(tag)}
                       </Text>
                     </Pressable>
                   ))}

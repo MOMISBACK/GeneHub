@@ -2,7 +2,7 @@
  * MainTabs - Bottom Tab Navigation
  * Premium "Quiet Luxury" style - Icon-only, no labels
  * 
- * Tabs: Protéines | Chercheurs | Articles | Conférences | Inbox
+ * Tabs: Inbox | Articles | Gènes | Chercheurs | Conférences
  */
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -54,11 +54,11 @@ export function MainTabs() {
         },
       })}
     >
+      <Tab.Screen name="Inbox" component={InboxScreen} />
+      <Tab.Screen name="Articles" component={ArticlesScreen} />
       <Tab.Screen name="Genes" component={GenesScreen} />
       <Tab.Screen name="Researchers" component={ResearchersScreen} />
-      <Tab.Screen name="Articles" component={ArticlesScreen} />
       <Tab.Screen name="Conferences" component={ConferencesScreen} />
-      <Tab.Screen name="Inbox" component={InboxScreen} />
     </Tab.Navigator>
   );
 }

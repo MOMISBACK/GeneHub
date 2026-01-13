@@ -1,5 +1,4 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -13,6 +12,7 @@ initSentry();
 
 function AppContent() {
   const { isDark } = useTheme();
+
   return (
     <View style={{ flex: 1 }}>
       <SyncStatusBar />

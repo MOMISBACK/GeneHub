@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Expo Go can have `Constants.expoConfig` undefined depending on how the app is loaded.
@@ -16,17 +16,26 @@ export const supabaseAnonKey =
   ((Constants as any).manifest?.extra?.supabaseAnonKey as string | undefined) ||
   ((Constants as any).manifest2?.extra?.supabaseAnonKey as string | undefined);
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase config. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file.',
+// Flag to check if Supabase is properly configured
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+// Log warning instead of crashing if not configured
+if (!isSupabaseConfigured) {
+  console.warn(
+    '[Supabase] Missing config. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+    'Using placeholder values - auth will not work.',
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Use placeholder values to prevent crash, but auth won't work
+const url = supabaseUrl || 'https://placeholder.supabase.co';
+const key = supabaseAnonKey || 'placeholder-key';
+
+export const supabase = createClient(url, key);
 
 // Re-create client with React Native friendly auth persistence.
 // Note: this keeps the same public API for imports.
-export const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabaseWithAuth = createClient(url, key, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

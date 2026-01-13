@@ -217,3 +217,55 @@ export function formatCrossrefCitation(work: CrossrefWork): string {
   
   return parts.join('. ') + '.';
 }
+
+// ============ Search API (for autocomplete) ============
+
+export interface CrossrefSearchResult {
+  doi: string;
+  title: string;
+  journal?: string;
+  year?: number;
+  authors?: string;
+}
+
+/**
+ * Search articles by title query (for autocomplete)
+ * Uses Crossref's works search API
+ */
+export async function searchCrossrefByTitle(
+  query: string,
+  limit: number = 5
+): Promise<CrossrefSearchResult[]> {
+  if (!query || query.length < 3) return [];
+  
+  try {
+    const params = new URLSearchParams({
+      query: query,
+      rows: String(limit),
+      select: 'DOI,title,container-title,published,author',
+    });
+    
+    const url = `${CROSSREF_BASE}?${params}`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const items = data.message?.items ?? [];
+    
+    return items.map((work: CrossrefWork) => ({
+      doi: work.DOI,
+      title: work.title?.[0] ?? 'Untitled',
+      journal: work['container-title']?.[0],
+      year: extractYear(work),
+      authors: formatCrossrefAuthors(work),
+    }));
+  } catch {
+    return [];
+  }
+}

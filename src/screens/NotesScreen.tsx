@@ -13,6 +13,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -100,9 +102,9 @@ export function NotesScreen({ navigation }: Props) {
   const handleNotePress = useCallback((note: EntityNote) => {
     switch (note.entity_type) {
       case 'gene':
-        // Gene notes store "symbol|organism" in entity_id
-        const [symbol, organism] = note.entity_id.split('|');
-        navigation.navigate('GeneDetail', { symbol, organism: organism || 'E. coli' });
+        // Gene notes store "symbol_organism" in entity_id (lowercase)
+        const [symbol, organism] = note.entity_id.split('_');
+        navigation.navigate('GeneDetail', { symbol, organism: organism || 'Escherichia coli' });
         break;
       case 'researcher':
         navigation.navigate('ResearcherDetail', { researcherId: note.entity_id });
@@ -180,7 +182,11 @@ export function NotesScreen({ navigation }: Props) {
   }, [colors, handleNotePress]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.headerTop}>
@@ -286,7 +292,7 @@ export function NotesScreen({ navigation }: Props) {
           }
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -318,7 +324,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   title: {
-    ...typography.h2,
+    ...typography.h1,
     flex: 1,
   },
   headerBadge: {
