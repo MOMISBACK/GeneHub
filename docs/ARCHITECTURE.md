@@ -1,7 +1,8 @@
 # GeneHub Architecture
 
-> Dernière mise à jour: 12 Janvier 2026  
-> Refactorisé avec hooks pattern, Knowledge Base API, Collections, Sync Status, Inbox amélioré, Import DOI/PMID amélioré
+> Dernière mise à jour: 13 Janvier 2026  
+> Refactorisé avec hooks pattern, Knowledge Base API, Collections, Sync Status, Inbox amélioré, Import DOI/PMID amélioré  
+> ✨ **Design System v3.2** - Refonte visuelle moderne (voir [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md))
 
 ## 📁 Structure du Projet
 
@@ -88,7 +89,12 @@ genehub-bacteria/
 │   │   └── collections.ts         # ✨ Types Collections
 │   │
 │   ├── navigation/
-│   ├── theme/
+│   ├── theme/                     # ✨ Design System v3.2 - Clarity Evolution
+│   │   ├── design-tokens.ts       # ✨ Nouveau - Tokens de design complets
+│   │   ├── clarity.ts             # Thèmes Clarity (dark/light/high-contrast)
+│   │   ├── themes.ts              # Définitions et exports de thèmes
+│   │   ├── ThemeContext.tsx       # Context React pour le thème
+│   │   └── index.ts               # Point d'entrée
 │   └── i18n/
 │
 ├── supabase/

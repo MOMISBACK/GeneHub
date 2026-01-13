@@ -1,9 +1,10 @@
 /**
  * Conferences Service
  * CRUD operations for scientific conferences
+ * Each user has their own independent conferences (isolated via user_id + RLS)
  */
 
-import { supabaseWithAuth, wrapError } from './client';
+import { supabaseWithAuth, wrapError, requireUserId } from './client';
 import type {
   Conference,
   ConferenceInsert,
@@ -63,9 +64,11 @@ export async function getConference(id: string): Promise<ConferenceWithRelations
 }
 
 export async function createConference(conference: ConferenceInsert): Promise<Conference> {
+  const userId = await requireUserId();
+  
   const { data, error } = await supabaseWithAuth
     .from('conferences')
-    .insert(conference)
+    .insert({ ...conference, user_id: userId })
     .select()
     .single();
 
@@ -102,9 +105,11 @@ export async function linkConferenceToResearcher(
   researcherId: string,
   role?: string
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
     .from('conference_researchers')
-    .insert({ conference_id: conferenceId, researcher_id: researcherId, role });
+    .insert({ conference_id: conferenceId, researcher_id: researcherId, role, user_id: userId });
 
   if (error && error.code !== '23505') {
     throw wrapError('liaison conférence-chercheur', error);
@@ -135,9 +140,11 @@ export async function linkGeneToConference(
   organism: string,
   conferenceId: string
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
-    .from('gene_conferences')
-    .insert({ gene_symbol: geneSymbol, organism, conference_id: conferenceId });
+    .from('conference_genes')
+    .insert({ gene_symbol: geneSymbol, organism, conference_id: conferenceId, user_id: userId });
 
   if (error && error.code !== '23505') {
     throw wrapError('liaison gène-conférence', error);
@@ -151,9 +158,11 @@ export async function linkArticleToConference(
   articleId: string,
   conferenceId: string
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
     .from('conference_articles')
-    .insert({ article_id: articleId, conference_id: conferenceId });
+    .insert({ article_id: articleId, conference_id: conferenceId, user_id: userId });
 
   if (error && error.code !== '23505') {
     throw wrapError('liaison article-conférence', error);

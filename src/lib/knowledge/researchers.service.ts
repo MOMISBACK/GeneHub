@@ -1,9 +1,10 @@
 /**
  * Researchers Service
  * CRUD operations for researchers
+ * Each user has their own independent researchers (isolated via user_id + RLS)
  */
 
-import { supabaseWithAuth, wrapError } from './client';
+import { supabaseWithAuth, wrapError, requireUserId } from './client';
 import type {
   Researcher,
   ResearcherInsert,
@@ -60,9 +61,11 @@ export async function getResearcher(id: string): Promise<ResearcherWithRelations
 }
 
 export async function createResearcher(researcher: ResearcherInsert): Promise<Researcher> {
+  const userId = await requireUserId();
+  
   const { data, error } = await supabaseWithAuth
     .from('researchers')
-    .insert(researcher)
+    .insert({ ...researcher, user_id: userId })
     .select()
     .single();
 
@@ -114,9 +117,11 @@ export async function linkGeneToResearcher(
   researcherId: string,
   role?: string
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
     .from('gene_researchers')
-    .insert({ gene_symbol: geneSymbol, organism, researcher_id: researcherId, role });
+    .insert({ gene_symbol: geneSymbol, organism, researcher_id: researcherId, role, user_id: userId });
 
   if (error && error.code !== '23505') {
     throw wrapError('liaison gène-chercheur', error);

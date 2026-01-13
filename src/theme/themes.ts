@@ -1,5 +1,8 @@
 // Theme type definition
-// GenoDB Atlas v3.1 - Clarity Design System Integration
+// GeneHub Design System - Refonte Visuelle 2026
+// GenoDB Atlas v3.2 - Clarity Evolution
+import * as tokens from './design-tokens';
+
 export type ThemeColors = {
   bg: string;
   bgSecondary: string;
@@ -77,19 +80,21 @@ export type ThemeColors = {
 };
 
 // Typography scale (sizes in logical pixels)
+// Basé sur Inter + IBM Plex Mono
 export const typography = {
   h1: { fontSize: 32, fontWeight: '700' as const, lineHeight: 40 },
   h2: { fontSize: 24, fontWeight: '600' as const, lineHeight: 32 },
-  h3: { fontSize: 20, fontWeight: '600' as const, lineHeight: 28 },
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
-  bodySmall: { fontSize: 15, fontWeight: '400' as const, lineHeight: 22 },
-  caption: { fontSize: 13, fontWeight: '500' as const, lineHeight: 18 },
+  h3: { fontSize: 18, fontWeight: '500' as const, lineHeight: 26 },
+  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 25.6 },  // 1.6 ratio
+  bodySmall: { fontSize: 15, fontWeight: '400' as const, lineHeight: 24 },
+  caption: { fontSize: 13, fontWeight: '400' as const, lineHeight: 20.8 },
   overline: { fontSize: 11, fontWeight: '600' as const, lineHeight: 16, letterSpacing: 0.5 },
   metric: { fontSize: 28, fontWeight: '600' as const, lineHeight: 34 },
   metricLabel: { fontSize: 12, fontWeight: '500' as const, lineHeight: 16 },
-  // Atlas v3.1 additions
+  // Atlas v3.2 additions
   label: { fontSize: 14, fontWeight: '500' as const, lineHeight: 20 },
   labelSmall: { fontSize: 12, fontWeight: '500' as const, lineHeight: 16 },
+  mono: { fontSize: 14, fontWeight: '400' as const, lineHeight: 22.4 },  // Pour séquences/code
 };
 
 // Spacing scale
@@ -107,10 +112,10 @@ export const spacing = {
 // Border radius - unified
 export const radius = {
   xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 18,
-  xl: 24,
+  sm: 6,      // Boutons
+  md: 8,      // Tags
+  lg: 10,     // Cartes
+  xl: 12,
   full: 9999,
 };
 
@@ -121,87 +126,87 @@ export type Theme = {
 };
 
 // ============================================
-// Brand Colors (Clarity Design System)
+// Brand Colors (Nouvelle Identité 2026)
 // ============================================
 const brand = {
-  petrolBlue: '#4C8B98',
-  petrolBlueLight: '#6BA3AE',
-  petrolBlueDark: '#3A6D77',
-  champagneGold: '#D4AF37',
-  champagneGoldLight: '#E5C968',
+  accentBlue: tokens.baseColors.accentBleu,
+  accentCyan: tokens.baseColors.accentCyan,
+  mintGreen: tokens.baseColors.vertMenthe,
+  amberYellow: tokens.baseColors.jauneAmbre,
+  cherryRed: tokens.baseColors.rougeCerise,
+  spectrumViolet: tokens.baseColors.violetSpectre,
 };
 
 // Source-specific colors for provenance tracking
 const sourceColors = {
-  ncbi: '#205493',
-  uniprot: '#F5A623',
-  pdb: '#3AA745',
-  biocyc: '#7B68EE',
+  ncbi: brand.accentBlue,
+  uniprot: brand.amberYellow,
+  pdb: brand.mintGreen,
+  biocyc: brand.spectrumViolet,
 };
 
 // ============================================
-// CLARITY LIGHT THEME (GenoDB Atlas v3.1)
+// LIGHT THEME - Support futur
 // ============================================
 export const quietLuxuryLight: Theme = {
   name: 'Light',
   isDark: false,
   colors: {
     // Backgrounds - Clean Lab Grade
-    bg: '#FAFBFC',
-    bgSecondary: '#F3F4F6',
-    bgTertiary: '#E5E7EB',
+    bg: '#FAFAFB',
+    bgSecondary: '#FFFFFF',
+    bgTertiary: '#F4F6F7',
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
     card: '#FFFFFF',
-    cardHover: '#F9FAFB',
+    cardHover: '#FAFAFB',
     
     // Text - Refined hierarchy (WCAG AA)
-    text: '#111827',
-    textSecondary: '#374151',
-    textMuted: '#6B7280',
+    text: '#111315',
+    textSecondary: '#5A5F64',
+    textMuted: '#9CA3AF',
     textInverse: '#FFFFFF',
     
-    // Accent - Monochrome (minimal, quiet)
-    // Use sparingly for active states and links.
-    accent: '#111827',
-    accentLight: '#374151',
-    accentDark: '#0B0F16',
-    accentMuted: '#9CA3AF',
+    // Accent - Nouvelle palette
+    accent: brand.accentBlue,
+    accentLight: brand.accentCyan,
+    accentDark: '#2A8CD9',
+    accentMuted: 'rgba(58, 160, 244, 0.2)',
     
     // Semantic - Clear distinction
     success: '#16A34A',
     warning: '#D97706',
     error: '#DC2626',
-    info: '#2563EB',
+    info: brand.accentBlue,
     
     // Borders - Hairline precision
-    border: '#E5E7EB',
-    borderLight: '#F3F4F6',
+    border: '#E1E4E8',
+    borderLight: '#F0F2F4',
     borderHairline: 'rgba(0, 0, 0, 0.08)',
-    divider: '#F3F4F6',
+    divider: '#F0F2F4',
     
     // Shadows - Subtle
-    shadow: 'rgba(0, 0, 0, 0.05)',
+    shadow: 'rgba(0, 0, 0, 0.08)',
     shadowSoft: 'rgba(0, 0, 0, 0.03)',
     
     // Buttons
-    buttonPrimary: '#111827',
+    buttonPrimary: brand.accentBlue,
     buttonPrimaryText: '#FFFFFF',
-    buttonSecondary: '#F3F4F6',
-    buttonSecondaryText: '#374151',
+    buttonSecondary: 'transparent',
+    buttonSecondaryText: brand.accentBlue,
     buttonDisabled: '#E5E7EB',
     buttonDisabledText: '#9CA3AF',
     
     // Inputs
     inputBg: '#FFFFFF',
-    inputBorder: '#D1D5DB',
-    inputBorderFocus: '#111827',
+    inputBorder: '#E1E4E8',
+    inputBorderFocus: brand.accentBlue,
     inputPlaceholder: '#9CA3AF',
     
     // Special elements
-    star: '#111827',
+    star: brand.amberYellow,
     starMuted: '#D1D5DB',
-    link: '#111827',
+    link: brand.accentBlue,
     
     // Chips - Outline style
     chipBg: 'transparent',
@@ -209,32 +214,36 @@ export const quietLuxuryLight: Theme = {
     chipText: '#374151',
 
     // Chip colors by entity type (pastel primaries)
-    chipGeneBg: 'rgba(59, 130, 246, 0.14)',
-    chipGeneBorder: 'rgba(59, 130, 246, 0.28)',
-    chipGeneText: '#1D4ED8',
-    chipPersonBg: 'rgba(245, 158, 11, 0.16)',
-    chipPersonBorder: 'rgba(245, 158, 11, 0.30)',
-    chipPersonText: '#B45309',
-    chipReferenceBg: 'rgba(244, 63, 94, 0.14)',
-    chipReferenceBorder: 'rgba(244, 63, 94, 0.28)',
-    chipReferenceText: '#BE123C',
-    chipConferenceBg: 'rgba(34, 197, 94, 0.14)',
-    chipConferenceBorder: 'rgba(34, 197, 94, 0.28)',
-    chipConferenceText: '#15803D',
-    chipDateBg: 'rgba(168, 85, 247, 0.14)',
-    chipDateBorder: 'rgba(168, 85, 247, 0.28)',
-    chipDateText: '#7C3AED',
+    chipGeneBg: tokens.entityColors.light.gene.bg,
+    chipGeneBorder: tokens.entityColors.light.gene.border,
+    chipGeneText: tokens.entityColors.light.gene.text,
+    
+    chipPersonBg: tokens.entityColors.light.researcher.bg,
+    chipPersonBorder: tokens.entityColors.light.researcher.border,
+    chipPersonText: tokens.entityColors.light.researcher.text,
+    
+    chipReferenceBg: tokens.entityColors.light.article.bg,
+    chipReferenceBorder: tokens.entityColors.light.article.border,
+    chipReferenceText: tokens.entityColors.light.article.text,
+    
+    chipConferenceBg: tokens.entityColors.light.conference.bg,
+    chipConferenceBorder: tokens.entityColors.light.conference.border,
+    chipConferenceText: tokens.entityColors.light.conference.text,
+    
+    chipDateBg: tokens.entityColors.light.temporal.bg,
+    chipDateBorder: tokens.entityColors.light.temporal.border,
+    chipDateText: tokens.entityColors.light.temporal.text,
     
     // Skeleton loading
     skeleton: '#F3F4F6',
     skeletonHighlight: '#FAFBFC',
     
-    // Note surface (inline tinted - monochrome)
+    // Note surface (inline tinted)
     noteSurface: 'rgba(17, 24, 39, 0.04)',
     
-    // Evidence & Curation (Atlas v3.1)
+    // Evidence & Curation (Atlas v3.2)
     evidenceCurated: '#16A34A',
-    evidenceVerified: '#2563EB',
+    evidenceVerified: brand.accentBlue,
     evidenceImported: '#6B7280',
     conflictBadgeBg: '#FEF3C7',
     conflictBadgeText: '#B45309',
@@ -247,110 +256,113 @@ export const quietLuxuryLight: Theme = {
   },
 };
 
-// ============================================
-// CLARITY DARK THEME (GenoDB Atlas v3.1)
+// DARK THEME - Nouveau Design 2026
 // ============================================
 export const quietLuxuryDark: Theme = {
   name: 'Dark',
   isDark: true,
   colors: {
-    // Backgrounds - Deep Lab Grade
-    bg: '#0F1419',
-    bgSecondary: '#1A1F2E',
-    bgTertiary: '#242B3D',
-    surface: '#1A1F2E',
-    surfaceElevated: '#242B3D',
-    card: '#1A1F2E',
-    cardHover: '#242B3D',
+    // Backgrounds - Nouveau design sombre moderne
+    bg: tokens.baseColors.nuitProfonde,
+    bgSecondary: tokens.baseColors.ardoise,
+    bgTertiary: '#131516',
+    surface: tokens.baseColors.ardoise,
+    surfaceElevated: '#1F2326',
+    card: tokens.baseColors.ardoise,
+    cardHover: '#1F2326',
     
     // Text - WCAG AA compliant
-    text: '#F0F4FC',
-    textSecondary: '#C9D1E0',
-    textMuted: '#8B95A8',
-    textInverse: '#0F1419',
+    text: tokens.baseColors.blancCasse,
+    textSecondary: tokens.baseColors.grisBrume,
+    textMuted: '#787D80',
+    textInverse: tokens.baseColors.nuitProfonde,
     
-    // Accent - Monochrome (minimal, quiet)
-    accent: '#F0F4FC',
-    accentLight: '#FFFFFF',
-    accentDark: '#C9D1E0',
-    accentMuted: '#8B95A8',
+    // Accent - Nouvelle palette bleue/cyan
+    accent: brand.accentBlue,
+    accentLight: brand.accentCyan,
+    accentDark: '#2A8CD9',
+    accentMuted: 'rgba(58, 160, 244, 0.2)',
     
-    // Semantic - Adjusted for dark
-    success: '#4ADE80',
-    warning: '#FBBF24',
-    error: '#F87171',
-    info: '#60A5FA',
+    // Semantic - Couleurs vives pour thème sombre
+    success: brand.mintGreen,
+    warning: brand.amberYellow,
+    error: brand.cherryRed,
+    info: brand.accentCyan,
     
-    // Borders - Subtle definition
-    border: '#2D3548',
-    borderLight: '#242B3D',
+    // Borders - Graphite clair
+    border: tokens.baseColors.graphiteClair,
+    borderLight: '#1F2326',
     borderHairline: 'rgba(255, 255, 255, 0.08)',
-    divider: '#242B3D',
+    divider: tokens.baseColors.graphiteClair,
     
     // Shadows
     shadow: 'rgba(0, 0, 0, 0.4)',
     shadowSoft: 'rgba(0, 0, 0, 0.2)',
     
     // Buttons
-    buttonPrimary: '#F0F4FC',
-    buttonPrimaryText: '#0F1419',
-    buttonSecondary: '#242B3D',
-    buttonSecondaryText: '#C9D1E0',
-    buttonDisabled: '#2D3548',
+    buttonPrimary: brand.accentBlue,
+    buttonPrimaryText: '#FFFFFF',
+    buttonSecondary: 'transparent',
+    buttonSecondaryText: brand.accentBlue,
+    buttonDisabled: tokens.baseColors.graphiteClair,
     buttonDisabledText: '#5C6370',
     
     // Inputs
-    inputBg: '#1A1F2E',
-    inputBorder: '#3D4663',
-    inputBorderFocus: '#F0F4FC',
-    inputPlaceholder: '#6B7280',
+    inputBg: tokens.baseColors.ardoise,
+    inputBorder: tokens.baseColors.graphiteClair,
+    inputBorderFocus: brand.accentBlue,
+    inputPlaceholder: '#787D80',
     
     // Special elements
-    star: '#F0F4FC',
+    star: brand.amberYellow,
     starMuted: '#4B5563',
-    link: '#F0F4FC',
+    link: brand.accentCyan,
     
     // Chips - Outline style
     chipBg: 'transparent',
-    chipBorder: '#3D4663',
-    chipText: '#C9D1E0',
+    chipBorder: tokens.baseColors.graphiteClair,
+    chipText: tokens.baseColors.grisBrume,
 
-    // Chip colors by entity type (pastel primaries, tuned for dark)
-    chipGeneBg: 'rgba(96, 165, 250, 0.20)',
-    chipGeneBorder: 'rgba(96, 165, 250, 0.34)',
-    chipGeneText: '#BFDBFE',
-    chipPersonBg: 'rgba(251, 191, 36, 0.18)',
-    chipPersonBorder: 'rgba(251, 191, 36, 0.32)',
-    chipPersonText: '#FDE68A',
-    chipReferenceBg: 'rgba(251, 113, 133, 0.18)',
-    chipReferenceBorder: 'rgba(251, 113, 133, 0.32)',
-    chipReferenceText: '#FECDD3',
-    chipConferenceBg: 'rgba(74, 222, 128, 0.18)',
-    chipConferenceBorder: 'rgba(74, 222, 128, 0.32)',
-    chipConferenceText: '#BBF7D0',
-    chipDateBg: 'rgba(192, 132, 252, 0.18)',
-    chipDateBorder: 'rgba(192, 132, 252, 0.32)',
-    chipDateText: '#E9D5FF',
+    // Chip colors by entity type (nouvelle palette)
+    chipGeneBg: tokens.entityColors.dark.gene.bg,
+    chipGeneBorder: tokens.entityColors.dark.gene.border,
+    chipGeneText: tokens.entityColors.dark.gene.text,
+    
+    chipPersonBg: tokens.entityColors.dark.researcher.bg,
+    chipPersonBorder: tokens.entityColors.dark.researcher.border,
+    chipPersonText: tokens.entityColors.dark.researcher.text,
+    
+    chipReferenceBg: tokens.entityColors.dark.article.bg,
+    chipReferenceBorder: tokens.entityColors.dark.article.border,
+    chipReferenceText: tokens.entityColors.dark.article.text,
+    
+    chipConferenceBg: tokens.entityColors.dark.conference.bg,
+    chipConferenceBorder: tokens.entityColors.dark.conference.border,
+    chipConferenceText: tokens.entityColors.dark.conference.text,
+    
+    chipDateBg: tokens.entityColors.dark.temporal.bg,
+    chipDateBorder: tokens.entityColors.dark.temporal.border,
+    chipDateText: tokens.entityColors.dark.temporal.text,
     
     // Skeleton loading
-    skeleton: '#242B3D',
-    skeletonHighlight: '#2D3548',
+    skeleton: '#1F2326',
+    skeletonHighlight: tokens.baseColors.graphiteClair,
     
-    // Note surface (inline tinted - monochrome)
-    noteSurface: 'rgba(240, 244, 252, 0.06)',
+    // Note surface (nouvelle couleur)
+    noteSurface: '#131516',
     
-    // Evidence & Curation (Atlas v3.1)
-    evidenceCurated: '#4ADE80',
-    evidenceVerified: '#60A5FA',
-    evidenceImported: '#9CA3AF',
+    // Evidence & Curation (Atlas v3.2)
+    evidenceCurated: brand.mintGreen,
+    evidenceVerified: brand.accentBlue,
+    evidenceImported: tokens.baseColors.grisBrume,
     conflictBadgeBg: '#422006',
-    conflictBadgeText: '#FBBF24',
+    conflictBadgeText: brand.amberYellow,
     
-    // Source colors (brighter for dark mode)
-    sourceNcbi: '#4A7FBF',
-    sourceUniprot: '#FFB84D',
-    sourcePdb: '#5CC96A',
-    sourceBiocyc: '#9B8CFF',
+    // Source colors
+    sourceNcbi: sourceColors.ncbi,
+    sourceUniprot: sourceColors.uniprot,
+    sourcePdb: sourceColors.pdb,
+    sourceBiocyc: sourceColors.biocyc,
   },
 };
 
