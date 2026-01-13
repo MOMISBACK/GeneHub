@@ -591,7 +591,7 @@ export async function linkArticleToConference(
   conferenceId: string
 ): Promise<void> {
   const { error } = await supabaseWithAuth
-    .from('article_conferences')
+    .from('conference_articles')
     .insert({ article_id: articleId, conference_id: conferenceId });
 
   if (error && error.code !== '23505') {
