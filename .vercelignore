@@ -18,24 +18,8 @@ ios
 
 # Git
 .git
-.gitignore
 
 # Docs
 docs
-README.md
+# README.md
 
-# Source (on ne déploie que public/)
-src
-supabase
-scripts
-
-# Config files (sauf vercel.json)
-app.config.ts
-app.json
-eas.json
-tsconfig.json
-package.json
-package-lock.json
-
-# Assets (sauf si nécessaires pour le web)
-assets
