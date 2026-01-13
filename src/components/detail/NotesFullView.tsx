@@ -12,7 +12,6 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme, typography, spacing, radius } from '../../theme';
 import { Icon } from '../Icons';
 import { TagCreateModal } from '../tags';
+import { showConfirm } from '../../lib/alert';
 import type { EntityNote, Tag, EntityType } from '../../types/knowledge';
 import type { RootStackParamList } from '../../navigation/types';
 import {
@@ -118,28 +118,25 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
 
   // Delete note
   const handleDeleteNote = useCallback(async (noteId: string) => {
-    Alert.alert(
+    const confirmed = await showConfirm(
       'Supprimer',
       'Supprimer cette note ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            setSaving(true);
-            try {
-              await deleteNote(noteId);
-              onRefresh();
-            } catch (e) {
-              console.error('Error deleting note:', e);
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ]
+      'Supprimer',
+      'Annuler',
+      true
     );
+    
+    if (confirmed) {
+      setSaving(true);
+      try {
+        await deleteNote(noteId);
+        onRefresh();
+      } catch (e) {
+        console.error('Error deleting note:', e);
+      } finally {
+        setSaving(false);
+      }
+    }
   }, [onRefresh]);
 
   // Start editing

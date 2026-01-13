@@ -9,7 +9,6 @@ import {
   SectionList,
   Pressable,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { TabIcon } from '../components/TabIcons';
+import { showConfirm, showError } from '../lib/alert';
 import {
   getCollection,
   getCollectionItems,
@@ -87,30 +87,27 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
     }));
   }, [items]);
 
-  const handleRemove = (item: CollectionItem) => {
-    Alert.alert(
+  const handleRemove = async (item: CollectionItem) => {
+    const confirmed = await showConfirm(
       'Retirer de la collection',
       `Retirer cet élément de "${collection?.name}" ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Retirer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeFromCollection(
-                item.collection_id,
-                item.entity_type,
-                item.entity_id
-              );
-              loadData();
-            } catch (error: any) {
-              Alert.alert('Erreur', error.message);
-            }
-          },
-        },
-      ]
+      'Retirer',
+      'Annuler',
+      true
     );
+    
+    if (confirmed) {
+      try {
+        await removeFromCollection(
+          item.collection_id,
+          item.entity_type,
+          item.entity_id
+        );
+        loadData();
+      } catch (error: any) {
+        showError('Erreur', error.message);
+      }
+    }
   };
 
   const navigateToEntity = (item: CollectionItem) => {

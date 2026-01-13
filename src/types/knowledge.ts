@@ -26,6 +26,7 @@ export type ResearcherUpdate = Partial<ResearcherInsert>;
 export interface Article {
   id: string;
   title: string;
+  authors?: string;          // Formatted: "Smith J., Doe A., ..."
   journal?: string;
   year?: number;
   doi?: string;
@@ -36,6 +37,37 @@ export interface Article {
   external_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Get first author's last name from article
+ */
+export function getFirstAuthorLastName(article: Article): string | null {
+  if (!article.authors) return null;
+  
+  // Parse "LastName FirstInitial., ..." or "LastName, FirstName, ..."
+  const firstAuthor = article.authors.split(',')[0].trim();
+  
+  // Extract last name (before any initial or space)
+  const parts = firstAuthor.split(' ');
+  return parts[0] || null;
+}
+
+/**
+ * Generate citation tag for article (e.g., "Smith 2024")
+ */
+export function getArticleCitationTag(article: Article): string {
+  const firstName = getFirstAuthorLastName(article);
+  const year = article.year;
+  
+  if (firstName && year) {
+    return `${firstName} ${year}`;
+  } else if (firstName) {
+    return firstName;
+  } else if (year) {
+    return `Article ${year}`;
+  }
+  return article.title.substring(0, 20);
 }
 
 export type ArticleInsert = Omit<Article, 'id' | 'created_at' | 'updated_at'>;

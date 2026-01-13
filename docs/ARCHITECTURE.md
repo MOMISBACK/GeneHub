@@ -3,6 +3,8 @@
 > Dernière mise à jour: 13 Janvier 2026  
 > Refactorisé avec hooks pattern, Knowledge Base API, Collections, Sync Status, Inbox amélioré, Import DOI/PMID amélioré  
 > ✨ **Design System v3.2** - Refonte visuelle moderne (voir [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md))
+> 🔒 **User Data Isolation** - Chaque utilisateur a ses propres données (RLS strict)
+> 🚀 **API Cache** - Cache partagé pour NCBI, UniProt, Crossref, PubMed
 
 ## 📁 Structure du Projet
 
@@ -50,12 +52,14 @@ genehub-bacteria/
 │   │
 │   ├── lib/
 │   │   ├── api.ts                 # API calls (NCBI, UniProt, etc.)
-│   │   ├── auth.ts                # Google OAuth (expo-web-browser)
+│   │   ├── auth.ts                # Google OAuth (expo-web-browser) ✨ Fix web logout
 │   │   ├── cache.ts               # AsyncStorage cache
 │   │   ├── db.ts                  # Gene database operations
 │   │   ├── export.ts              # ✨ Export BibTeX/Markdown/JSON
-│   │   ├── crossref.ts            # ✨ Crossref DOI import + search
-│   │   ├── pubmed.ts              # ✨ PubMed PMID import
+│   │   ├── crossref.ts            # ✨ Crossref DOI import + search + authors
+│   │   ├── pubmed.ts              # ✨ PubMed PMID import + authors
+│   │   ├── apiCache.ts            # ✨ Shared API cache (NCBI, UniProt, Crossref, PubMed)
+│   │   ├── alert.ts               # ✨ Cross-platform alerts (web + mobile)
 │   │   ├── network.ts             # Network status
 │   │   ├── supabase.ts            # Supabase clients
 │   │   ├── syncStore.ts           # ✨ Zustand store (pending/failed)
@@ -107,7 +111,10 @@ genehub-bacteria/
 │   │   ├── 005_tags_ownership.sql # ✨ Tags user_id + RLS
 │   │   ├── 006_articles_external_ids.sql # ✨ external_source/id
 │   │   ├── 007_collections.sql    # ✨ Collections + dedup
-│   │   └── 008_reset_data.sql     # ✨ Reset all user data (clean slate)
+│   │   ├── 008_reset_data.sql     # ✨ Reset all user data (clean slate)
+│   │   ├── 009_user_data_isolation.sql # ✨ user_id + RLS strict sur toutes les tables
+│   │   ├── 010_api_cache.sql      # ✨ Cache API partagé
+│   │   └── 011_articles_authors.sql # ✨ Champ authors pour articles
 │   └── functions/
 │       ├── gene-summary/          
 │       └── gene-biocyc/           

@@ -14,7 +14,6 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Alert,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icons';
 import { TabIcon } from '../components/TabIcons';
+import { showConfirm } from '../lib/alert';
 
 import type { RootStackParamList, MainTabsParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
@@ -72,18 +72,19 @@ export function GenesScreen({ navigation }: Props) {
     return unsubscribe;
   }, [loadGenes, navigation]);
 
-  const handleDelete = (gene: SavedGene) => {
-    Alert.alert('Supprimer ce gène ?', '', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          await removeSavedGene(gene.symbol, gene.organism);
-          loadGenes();
-        },
-      },
-    ]);
+  const handleDelete = async (gene: SavedGene) => {
+    const confirmed = await showConfirm(
+      'Supprimer ce gène ?',
+      '',
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      await removeSavedGene(gene.symbol, gene.organism);
+      loadGenes();
+    }
   };
 
   const handleSearch = () => {

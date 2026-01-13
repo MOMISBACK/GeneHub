@@ -162,6 +162,7 @@ function cleanAbstract(abstract?: string): string | undefined {
 export function crossrefToArticle(work: CrossrefWork): ArticleInsert {
   return {
     title: work.title?.[0] ?? 'Untitled',
+    authors: formatCrossrefAuthors(work) || undefined,
     journal: work['container-title']?.[0],
     year: extractYear(work),
     doi: work.DOI,
