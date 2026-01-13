@@ -180,7 +180,8 @@ export interface ResearcherWithRelations extends Researcher {
 }
 
 export interface ArticleWithRelations extends Article {
-  authors?: (Researcher & { author_position?: number; is_corresponding?: boolean })[];
+  /** Linked researchers (from article_researchers table) */
+  linkedResearchers?: (Researcher & { author_position?: number; is_corresponding?: boolean })[];
   genes?: { gene_symbol: string; organism: string }[];
 }
 
