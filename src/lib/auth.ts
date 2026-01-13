@@ -2,6 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import { supabaseWithAuth } from './supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -119,7 +120,53 @@ export async function signInWithGoogle(): Promise<void> {
 
 export async function signOut(): Promise<void> {
   log('[auth] Signing out...');
-  const { error } = await supabaseWithAuth.auth.signOut();
-  if (error) throw error;
-  log('[auth] Signed out successfully');
+  
+  try {
+    // Clear local storage first to ensure clean state
+    if (Platform.OS === 'web') {
+      // On web, clear all Supabase-related storage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('supabase') || key.includes('sb-'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      log('[auth] Cleared web localStorage');
+    } else {
+      // On mobile, clear AsyncStorage Supabase keys
+      const allKeys = await AsyncStorage.getAllKeys();
+      const supabaseKeys = allKeys.filter(k => k.includes('supabase') || k.includes('sb-'));
+      if (supabaseKeys.length > 0) {
+        await AsyncStorage.multiRemove(supabaseKeys);
+        log('[auth] Cleared mobile AsyncStorage:', supabaseKeys.length, 'keys');
+      }
+    }
+    
+    // Sign out from Supabase (scope: global signs out all sessions)
+    const { error } = await supabaseWithAuth.auth.signOut({ scope: 'global' });
+    if (error) {
+      log('[auth] Supabase signOut error (non-blocking):', error.message);
+      // Don't throw - we've already cleared local storage
+    }
+    
+    log('[auth] Signed out successfully');
+    
+    // On web, force reload to clear any cached state
+    if (Platform.OS === 'web') {
+      // Small delay to ensure state is cleared
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 100);
+    }
+  } catch (e) {
+    log('[auth] Error during sign out:', e);
+    // Force clear anyway on web
+    if (Platform.OS === 'web') {
+      localStorage.clear();
+      window.location.href = window.location.origin;
+    }
+    throw e;
+  }
 }

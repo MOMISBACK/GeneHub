@@ -1,9 +1,10 @@
 /**
  * Articles Service
  * CRUD operations for scientific articles
+ * Each user has their own independent articles (isolated via user_id + RLS)
  */
 
-import { supabaseWithAuth, wrapError } from './client';
+import { supabaseWithAuth, wrapError, requireUserId } from './client';
 import type {
   Article,
   ArticleInsert,
@@ -58,9 +59,11 @@ export async function getArticle(id: string): Promise<ArticleWithRelations | nul
 }
 
 export async function createArticle(article: ArticleInsert): Promise<Article> {
+  const userId = await requireUserId();
+  
   const { data, error } = await supabaseWithAuth
     .from('articles')
-    .insert(article)
+    .insert({ ...article, user_id: userId })
     .select()
     .single();
 
@@ -112,13 +115,16 @@ export async function linkArticleToResearcher(
   authorPosition?: number,
   isCorresponding?: boolean
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
     .from('article_researchers')
     .insert({ 
       article_id: articleId, 
       researcher_id: researcherId, 
       author_position: authorPosition, 
-      is_corresponding: isCorresponding 
+      is_corresponding: isCorresponding,
+      user_id: userId,
     });
 
   if (error && error.code !== '23505') {
@@ -150,9 +156,11 @@ export async function linkGeneToArticle(
   organism: string,
   articleId: string
 ): Promise<void> {
+  const userId = await requireUserId();
+  
   const { error } = await supabaseWithAuth
     .from('gene_articles')
-    .insert({ gene_symbol: geneSymbol, organism, article_id: articleId });
+    .insert({ gene_symbol: geneSymbol, organism, article_id: articleId, user_id: userId });
 
   if (error && error.code !== '23505') {
     throw wrapError('liaison gène-article', error);

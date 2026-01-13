@@ -1,38 +1,48 @@
 /**
- * GenoDB Atlas v3.1 - Design System "Clarity"
+ * GeneHub Design System - Refonte Visuelle 2026
+ * GenoDB Atlas v3.2 - Clarity Evolution
  * 
  * Principes:
- * - Default Calm, Detail on Demand
- * - Lab Grade colors (Light/Dark/Auto)
+ * - Thème sombre moderne et scientifique
+ * - Lisible sur écrans de laboratoire
  * - WCAG 2.1 AA compliant (contrast ≥ 4.5:1)
- * - Instrument Grade typography
+ * - Support mode clair avec tokens CSS
+ * - Typographie Inter + IBM Plex Mono
  */
+
+import * as tokens from './design-tokens';
 
 // ============ Color Palette ============
 
 /**
- * Brand Colors
+ * Brand Colors - Nouvelle identité visuelle
  */
 export const brand = {
   /** Primary accent - actions, active states, focus */
-  petrolBlue: '#4C8B98',
-  petrolBlueLight: '#6BA3AE',
-  petrolBlueDark: '#3A6D77',
+  accentBlue: tokens.baseColors.accentBleu,
+  accentCyan: tokens.baseColors.accentCyan,
   
-  /** Pin/Favorite exclusive color */
-  champagneGold: '#D4AF37',
-  champagneGoldLight: '#E5C968',
-  champagneGoldDark: '#B8960F',
+  /** Success/validation color */
+  mintGreen: tokens.baseColors.vertMenthe,
+  
+  /** Warning/attention color */
+  amberYellow: tokens.baseColors.jauneAmbre,
+  
+  /** Error color */
+  cherryRed: tokens.baseColors.rougeCerise,
+  
+  /** Scientific/conference accent */
+  spectrumViolet: tokens.baseColors.violetSpectre,
 } as const;
 
 /**
  * Semantic Colors - never color alone, always icon + label
  */
 export const semantic = {
-  // Warning/Conflict - amber/orange
+  // Warning/Conflict - amber
   warning: {
-    light: '#F59E0B',
-    DEFAULT: '#D97706',
+    light: tokens.baseColors.jauneAmbre,
+    DEFAULT: '#F59E0B',
     dark: '#B45309',
     bg: '#FEF3C7',
     bgDark: '#422006',
@@ -40,23 +50,23 @@ export const semantic = {
   // Error - red
   error: {
     light: '#EF4444',
-    DEFAULT: '#DC2626',
+    DEFAULT: tokens.baseColors.rougeCerise,
     dark: '#B91C1C',
     bg: '#FEE2E2',
     bgDark: '#450A0A',
   },
   // Success - green
   success: {
-    light: '#22C55E',
+    light: tokens.baseColors.vertMenthe,
     DEFAULT: '#16A34A',
     dark: '#15803D',
     bg: '#DCFCE7',
     bgDark: '#052E16',
   },
-  // Info - blue/neutral
+  // Info - blue/cyan
   info: {
-    light: '#3B82F6',
-    DEFAULT: '#2563EB',
+    light: tokens.baseColors.accentCyan,
+    DEFAULT: tokens.baseColors.accentBleu,
     dark: '#1D4ED8',
     bg: '#DBEAFE',
     bgDark: '#172554',
@@ -67,47 +77,47 @@ export const semantic = {
  * Evidence/Curation Status Colors
  */
 export const evidence = {
-  curated: '#16A34A',      // Green - human expert
-  verified: '#2563EB',     // Blue - internal validation
-  imported: '#6B7280',     // Gray - external, unverified
-  experimental: '#8B5CF6', // Purple - experimental evidence
-  computational: '#06B6D4', // Cyan - computational
+  curated: tokens.baseColors.vertMenthe,      // Green - human expert
+  verified: tokens.baseColors.accentBleu,     // Blue - internal validation
+  imported: tokens.baseColors.grisBrume,      // Gray - external, unverified
+  experimental: tokens.baseColors.violetSpectre, // Purple - experimental evidence
+  computational: tokens.baseColors.accentCyan, // Cyan - computational
 } as const;
 
 /**
- * Light Theme - Lab Grade
+ * Light Theme - Support futur
  */
 export const lightTheme = {
   mode: 'light' as const,
   colors: {
     // Surfaces (3 levels)
     surface0: '#FFFFFF',
-    surface1: '#F9FAFB',
-    surface2: '#F3F4F6',
+    surface1: '#FAFAFB',
+    surface2: '#F4F6F7',
     
     // Background
-    bg: '#FFFFFF',
-    bgSecondary: '#F9FAFB',
-    bgTertiary: '#F3F4F6',
+    bg: '#FAFAFB',
+    bgSecondary: '#FFFFFF',
+    bgTertiary: '#F4F6F7',
     
     // Text (WCAG AA compliant)
-    text: '#111827',           // Primary - contrast 15.5:1
-    textSecondary: '#374151',  // Secondary - contrast 10:1
-    textMuted: '#6B7280',      // Muted - contrast 5.7:1
-    textDisabled: '#9CA3AF',   // Disabled
+    text: '#111315',           // Primary
+    textSecondary: '#5A5F64',  // Secondary
+    textMuted: '#9CA3AF',      // Muted
+    textDisabled: 'rgba(17, 19, 21, 0.5)',   // Disabled
     
     // Borders
-    border: '#E5E7EB',
+    border: '#E1E4E8',
     borderHairline: 'rgba(0, 0, 0, 0.08)',
     borderStrong: '#D1D5DB',
     
     // Interactive
-    accent: brand.petrolBlue,
-    accentHover: brand.petrolBlueDark,
-    accentMuted: `${brand.petrolBlue}20`,
+    accent: brand.accentBlue,
+    accentHover: brand.accentCyan,
+    accentMuted: 'rgba(58, 160, 244, 0.2)',
     
     // Favorites
-    star: brand.champagneGold,
+    star: brand.amberYellow,
     starMuted: '#D1D5DB',
     
     // Semantic
@@ -129,20 +139,20 @@ export const lightTheme = {
     
     // Input
     inputBg: '#FFFFFF',
-    inputBorder: '#D1D5DB',
+    inputBorder: '#E1E4E8',
     inputPlaceholder: '#9CA3AF',
-    inputFocus: brand.petrolBlue,
+    inputFocus: brand.accentBlue,
     
     // Button
-    buttonPrimaryBg: brand.petrolBlue,
+    buttonPrimaryBg: brand.accentBlue,
     buttonPrimaryText: '#FFFFFF',
-    buttonSecondaryBg: '#F3F4F6',
-    buttonSecondaryText: '#374151',
+    buttonSecondaryBg: 'transparent',
+    buttonSecondaryText: brand.accentBlue,
     
     // Card
     cardBg: '#FFFFFF',
-    cardBorder: '#E5E7EB',
-    cardShadow: 'rgba(0, 0, 0, 0.05)',
+    cardBorder: '#E1E4E8',
+    cardShadow: 'rgba(0, 0, 0, 0.12)',
     
     // Conflict/Warning badge
     conflictBadgeBg: semantic.warning.bg,
@@ -152,50 +162,53 @@ export const lightTheme = {
     overlay: 'rgba(0, 0, 0, 0.5)',
     
     // Focus ring (accessibility)
-    focusRing: `${brand.petrolBlue}40`,
+    focusRing: 'rgba(58, 160, 244, 0.13)',
+    
+    // Shadows with glow
+    shadowGlow: 'rgba(58, 160, 244, 0.06)',
   },
 };
 
 /**
- * Dark Theme - Lab Grade
+ * Dark Theme - Nouveau Design 2026
  */
 export const darkTheme = {
   mode: 'dark' as const,
   colors: {
-    // Surfaces (3 levels)
-    surface0: '#0F1419',
-    surface1: '#1A1F2E',
-    surface2: '#242B3D',
+    // Surfaces (3 levels) - Nouvelle palette
+    surface0: tokens.baseColors.nuitProfonde,
+    surface1: tokens.baseColors.ardoise,
+    surface2: '#1F2326',
     
     // Background
-    bg: '#0F1419',
-    bgSecondary: '#1A1F2E',
-    bgTertiary: '#242B3D',
+    bg: tokens.baseColors.nuitProfonde,
+    bgSecondary: tokens.baseColors.ardoise,
+    bgTertiary: '#131516',
     
     // Text (WCAG AA compliant)
-    text: '#F0F4FC',           // Primary - contrast 15:1
-    textSecondary: '#C9D1E0',  // Secondary - contrast 10:1
-    textMuted: '#8B95A8',      // Muted - contrast 5.5:1
-    textDisabled: '#5C6370',   // Disabled
+    text: tokens.baseColors.blancCasse,           // Primary
+    textSecondary: tokens.baseColors.grisBrume,   // Secondary
+    textMuted: '#787D80',                         // Muted
+    textDisabled: 'rgba(244, 246, 247, 0.5)',     // Disabled
     
     // Borders
-    border: '#2D3548',
+    border: tokens.baseColors.graphiteClair,
     borderHairline: 'rgba(255, 255, 255, 0.08)',
     borderStrong: '#3D4663',
     
     // Interactive
-    accent: brand.petrolBlueLight,
-    accentHover: brand.petrolBlue,
-    accentMuted: `${brand.petrolBlue}30`,
+    accent: brand.accentBlue,
+    accentHover: brand.accentCyan,
+    accentMuted: 'rgba(58, 160, 244, 0.2)',
     
     // Favorites
-    star: brand.champagneGold,
+    star: brand.amberYellow,
     starMuted: '#4B5563',
     
     // Semantic
     warning: semantic.warning.light,
     warningBg: semantic.warning.bgDark,
-    error: semantic.error.light,
+    error: semantic.error.DEFAULT,
     errorBg: semantic.error.bgDark,
     success: semantic.success.light,
     successBg: semantic.success.bgDark,
@@ -203,28 +216,28 @@ export const darkTheme = {
     infoBg: semantic.info.bgDark,
     
     // Evidence
-    evidenceCurated: '#4ADE80',
-    evidenceVerified: '#60A5FA',
-    evidenceImported: '#9CA3AF',
-    evidenceExperimental: '#A78BFA',
-    evidenceComputational: '#22D3EE',
+    evidenceCurated: brand.mintGreen,
+    evidenceVerified: brand.accentBlue,
+    evidenceImported: tokens.baseColors.grisBrume,
+    evidenceExperimental: brand.spectrumViolet,
+    evidenceComputational: brand.accentCyan,
     
     // Input
-    inputBg: '#1A1F2E',
-    inputBorder: '#3D4663',
-    inputPlaceholder: '#6B7280',
-    inputFocus: brand.petrolBlueLight,
+    inputBg: tokens.baseColors.ardoise,
+    inputBorder: tokens.baseColors.graphiteClair,
+    inputPlaceholder: '#787D80',
+    inputFocus: brand.accentBlue,
     
     // Button
-    buttonPrimaryBg: brand.petrolBlue,
+    buttonPrimaryBg: brand.accentBlue,
     buttonPrimaryText: '#FFFFFF',
-    buttonSecondaryBg: '#242B3D',
-    buttonSecondaryText: '#C9D1E0',
+    buttonSecondaryBg: 'transparent',
+    buttonSecondaryText: brand.accentBlue,
     
     // Card
-    cardBg: '#1A1F2E',
-    cardBorder: '#2D3548',
-    cardShadow: 'rgba(0, 0, 0, 0.3)',
+    cardBg: tokens.baseColors.ardoise,
+    cardBorder: tokens.baseColors.graphiteClair,
+    cardShadow: 'rgba(0, 0, 0, 0.4)',
     
     // Conflict/Warning badge
     conflictBadgeBg: semantic.warning.bgDark,
@@ -234,7 +247,10 @@ export const darkTheme = {
     overlay: 'rgba(0, 0, 0, 0.7)',
     
     // Focus ring (accessibility)
-    focusRing: `${brand.petrolBlueLight}40`,
+    focusRing: 'rgba(58, 160, 244, 0.13)',
+    
+    // Shadows with glow
+    shadowGlow: 'rgba(58, 160, 244, 0.06)',
   },
 };
 
