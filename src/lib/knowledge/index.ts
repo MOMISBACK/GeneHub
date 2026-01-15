@@ -23,6 +23,8 @@ export {
   getResearchersForGene,
   linkGeneToResearcher,
   unlinkGeneFromResearcher,
+  linkResearcherCollaborator,
+  unlinkResearcherCollaborator,
   importResearcherFromCard,
 } from './researchers.service';
 
@@ -69,6 +71,7 @@ export {
   createTag,
   getOrCreateTag,
   getOrCreateTagWithData,
+  getOrCreateEntityTag,
   deleteTag,
   getNotesForTag,
   addTagToNote,

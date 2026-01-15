@@ -8,6 +8,7 @@
  */
 
 import { supabaseWithAuth, wrapError, requireUserId } from './client';
+import { getOrCreateEntityTag, addTagToNote } from './tags.service';
 import type {
   EntityNote,
   EntityNoteInsert,
@@ -16,7 +17,7 @@ import type {
 
 /**
  * List notes for an entity, including notes linked via tags.
- * Notes linked via tags have isLinkedViaTag=true flag.
+ * Notes linked via tags have isLinkedViaTag=true flag and linkingTag set.
  */
 export async function listNotesForEntity(
   entityType: EntityType,
@@ -35,24 +36,35 @@ export async function listNotesForEntity(
 
   if (directError) throw wrapError('notes', directError);
 
-  // 2. Get notes linked via tags
+  // 2. Get tags linked to this entity (with full tag data)
   const { data: linkedTags } = await supabaseWithAuth
     .from('tags')
-    .select('id')
+    .select('*')
     .eq('user_id', userId)
     .eq('entity_type', entityType)
     .eq('entity_id', entityId);
 
-  const tagIds = linkedTags?.map(t => t.id) ?? [];
+  const tagMap = new Map<string, any>();
+  (linkedTags ?? []).forEach(t => tagMap.set(t.id, t));
+  const tagIds = Array.from(tagMap.keys());
   
   let linkedNotes: EntityNote[] = [];
   if (tagIds.length > 0) {
     const { data: noteTagRels } = await supabaseWithAuth
       .from('note_tags')
-      .select('note_id')
-      .in('tag_id', tagIds);
+      .select('note_id, tag_id')
+      .in('tag_id', tagIds)
+      .eq('user_id', userId);
 
-    const linkedNoteIds = noteTagRels?.map(r => r.note_id) ?? [];
+    // Group by note_id and track which tag links it
+    const noteToTagMap = new Map<string, string>();
+    (noteTagRels ?? []).forEach(r => {
+      if (!noteToTagMap.has(r.note_id)) {
+        noteToTagMap.set(r.note_id, r.tag_id);
+      }
+    });
+
+    const linkedNoteIds = Array.from(noteToTagMap.keys());
     const directNoteIds = (directNotes ?? []).map(n => n.id);
     const uniqueLinkedIds = linkedNoteIds.filter(id => !directNoteIds.includes(id));
 
@@ -67,21 +79,34 @@ export async function listNotesForEntity(
       linkedNotes = (linkedData ?? []).map(note => ({
         ...note,
         isLinkedViaTag: true,
+        linkingTag: tagMap.get(noteToTagMap.get(note.id) ?? ''),
         tags: [],
       }));
     }
   }
 
-  // Combine and get tags for each note
+  // Combine and get tags for each note (batched)
   const allNotes: EntityNote[] = [...(directNotes ?? []).map(n => ({ ...n, tags: [] })), ...linkedNotes];
-  
-  for (const note of allNotes) {
+  const allNoteIds = allNotes.map(n => n.id);
+
+  if (allNoteIds.length > 0) {
     const { data: tagRels } = await supabaseWithAuth
       .from('note_tags')
-      .select('tag:tags(*)')
-      .eq('note_id', note.id);
-    
-    note.tags = tagRels?.map((r: any) => r.tag).filter(Boolean) ?? [];
+      .select('note_id, tag:tags(*)')
+      .in('note_id', allNoteIds)
+      .eq('user_id', userId);
+
+    const tagsByNote = new Map<string, any[]>();
+    (tagRels ?? []).forEach((r: any) => {
+      if (!r.note_id || !r.tag) return;
+      const arr = tagsByNote.get(r.note_id) ?? [];
+      arr.push(r.tag);
+      tagsByNote.set(r.note_id, arr);
+    });
+
+    for (const note of allNotes) {
+      note.tags = tagsByNote.get(note.id) ?? [];
+    }
   }
 
   // Sort by updated_at descending
@@ -90,7 +115,10 @@ export async function listNotesForEntity(
   return allNotes;
 }
 
-export async function createNote(note: EntityNoteInsert): Promise<EntityNote> {
+export async function createNote(
+  note: EntityNoteInsert,
+  entityName?: string
+): Promise<EntityNote> {
   const userId = await requireUserId();
 
   const { data, error } = await supabaseWithAuth
@@ -100,7 +128,26 @@ export async function createNote(note: EntityNoteInsert): Promise<EntityNote> {
     .single();
 
   if (error) throw wrapError('création note', error);
-  return { ...data, tags: [] };
+
+  const createdNote: EntityNote = { ...data, tags: [] };
+
+  // Auto-tag: if entityName is provided, automatically add the entity's tag
+  if (entityName && note.entity_type && note.entity_id) {
+    try {
+      const entityTag = await getOrCreateEntityTag(
+        note.entity_type,
+        note.entity_id,
+        entityName
+      );
+      await addTagToNote(createdNote.id, entityTag.id);
+      createdNote.tags = [entityTag];
+    } catch (e) {
+      // Don't fail note creation if auto-tagging fails
+      console.warn('Auto-tagging failed:', e);
+    }
+  }
+
+  return createdNote;
 }
 
 export async function updateNote(id: string, content: string): Promise<EntityNote> {
@@ -144,15 +191,28 @@ export async function listAllNotes(): Promise<EntityNote[]> {
 
   if (error) throw wrapError('notes', error);
 
-  // Get tags for each note
+  // Get tags for each note (batched)
   const notes = data ?? [];
-  for (const note of notes) {
+  const noteIds = notes.map(n => n.id);
+
+  if (noteIds.length > 0) {
     const { data: tagRels } = await supabaseWithAuth
       .from('note_tags')
-      .select('tag:tags(*)')
-      .eq('note_id', note.id);
-    
-    note.tags = tagRels?.map((r: any) => r.tag).filter(Boolean) ?? [];
+      .select('note_id, tag:tags(*)')
+      .in('note_id', noteIds)
+      .eq('user_id', userId);
+
+    const tagsByNote = new Map<string, any[]>();
+    (tagRels ?? []).forEach((r: any) => {
+      if (!r.note_id || !r.tag) return;
+      const arr = tagsByNote.get(r.note_id) ?? [];
+      arr.push(r.tag);
+      tagsByNote.set(r.note_id, arr);
+    });
+
+    for (const note of notes) {
+      note.tags = tagsByNote.get(note.id) ?? [];
+    }
   }
 
   return notes;

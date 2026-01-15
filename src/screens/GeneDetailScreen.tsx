@@ -1,9 +1,12 @@
 /**
- * GeneDetailScreen - Premium Card-based Design
+ * GeneDetailScreen - Unified Gene Card with Notes
  * 
- * Refactored to use hooks for clean separation of concerns:
- * - useGeneData: gene data loading, caching, save/unsave
- * - useFunctionReferences: PubMed citation fetching
+ * Single unified view with:
+ * - Gene information at the top
+ * - Notes section directly below (no tabs)
+ * 
+ * NOTE: API-fetched data sections (EcoCyc, UniProt, etc.) are conditionally shown
+ * Set SHOW_API_SECTIONS = true to re-enable them
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,12 +31,17 @@ import type { RootStackParamList } from '../navigation/types';
 import { parseText, toSuperscript } from '../lib/utils';
 import { useGeneData, useFunctionReferences, useNotes } from '../lib/hooks';
 import { Card, CollapsibleCard, SourceItem, StructureItem } from '../components/gene-detail';
-import { NotesSection } from '../components/notes';
 import { AddToCollectionButton } from '../components/collections';
-import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
+import { NotesInlineSection } from '../components/detail';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE FLAG: Show/hide API-fetched data sections
+// Set to true when re-enabling automatic gene summaries
+// ═══════════════════════════════════════════════════════════════════════════════
+const SHOW_API_SECTIONS = false;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GeneDetail'>;
 
@@ -52,14 +60,13 @@ export function GeneDetailScreen({ route }: Props) {
   const geneEntityId = `${symbol.toLowerCase()}_${organism.toLowerCase()}`;
   const { notes, loading: notesLoading, refresh: refreshNotes } = useNotes('gene', geneEntityId);
 
-  // UI state
+  // UI state for API sections (only used when SHOW_API_SECTIONS=true)
   const [showAllInteractors, setShowAllInteractors] = useState(false);
   const [expandedFunction, setExpandedFunction] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [refsExpanded, setRefsExpanded] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
-  // Parse function text for references
+  // Parse function text for references (only needed for API sections)
   const functionText = data?.function ?? '';
   const { segments: functionSegments, references: functionReferences } = useMemo(() => {
     if (!functionText) return { segments: [], references: [] };
@@ -124,7 +131,7 @@ export function GeneDetailScreen({ route }: Props) {
   const hasStructures = pdbItems.length > 0 || !!data.alphafoldUrl;
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Main render
+  // Main render - Unified view
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -136,9 +143,6 @@ export function GeneDetailScreen({ route }: Props) {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <View style={styles.titleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
-            <Icon name="arrowBack" size={22} color={colors.text} />
-          </Pressable>
           <View style={styles.titleContent}>
             <Text style={[styles.geneSymbol, { color: colors.text }]}>{data.symbol}</Text>
             <Text style={[styles.geneOrganism, { color: colors.textMuted }]}>{data.organism}</Text>
@@ -147,18 +151,250 @@ export function GeneDetailScreen({ route }: Props) {
           <Pressable onPress={toggleSave} style={styles.starBtn} hitSlop={8}>
             <Icon name={isSaved ? 'star' : 'starOutline'} size={18} color={isSaved ? colors.text : colors.textMuted} />
           </Pressable>
-          <Pressable onPress={refresh} style={styles.refreshBtn} hitSlop={8}>
-            <Icon name="refresh" size={20} color={colors.textMuted} />
-          </Pressable>
+          {/* Refresh button only shown when API sections are enabled */}
+          {SHOW_API_SECTIONS && (
+            <Pressable onPress={refresh} style={styles.refreshBtn} hitSlop={8}>
+              <Icon name="refresh" size={20} color={colors.textMuted} />
+            </Pressable>
+          )}
         </View>
       </View>
 
-      {/* View Mode Toggle */}
-      <ViewModeToggle mode={viewMode} onChange={setViewMode} notesCount={notes.length} />
+      {/* Unified Scrollable Content */}
+      <ScrollView 
+        style={styles.scroll} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Basic Gene Info Card - Always shown */}
+        <Card title="Informations" colors={colors}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Symbole</Text>
+            <Text style={[styles.infoValue, { color: colors.text, fontStyle: 'italic' }]}>{data.symbol}</Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Organisme</Text>
+            <Text style={[styles.infoValue, { color: colors.text, fontStyle: 'italic' }]}>{data.organism}</Text>
+          </View>
+          {data.proteinName && (
+            <View style={[styles.infoRow, { borderBottomColor: 'transparent' }]}>
+              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Protéine</Text>
+              <Text style={[styles.infoValue, { color: colors.text, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{data.proteinName}</Text>
+            </View>
+          )}
+        </Card>
 
-      {/* Notes Mode */}
-      {viewMode === 'notes' ? (
-        <NotesFullView
+        {/* ═══════════════════════════════════════════════════════════════════════════════
+            API-FETCHED SECTIONS - Only shown when SHOW_API_SECTIONS is true
+            ═══════════════════════════════════════════════════════════════════════════════ */}
+        
+        {SHOW_API_SECTIONS && (
+          <>
+            {/* Sources Card - collapsible */}
+            <CollapsibleCard 
+              title={t.geneDetail.sources} 
+              expanded={sourcesExpanded}
+              onToggle={() => setSourcesExpanded(!sourcesExpanded)}
+              colors={colors}
+            >
+              <SourceItem name={t.geneDetail.sourceNames.ncbiGene} available={!!data.ncbiGeneId} url={data.links?.ncbi} colors={colors} />
+              <SourceItem name={t.geneDetail.sourceNames.uniprot} available={!!data.uniprotId} url={data.links?.uniprot} colors={colors} />
+              <SourceItem name={t.geneDetail.sourceNames.ecocyc} available={!!biocycData} url={biocycData?.links?.biocyc} colors={colors} />
+            </CollapsibleCard>
+
+            {/* Description Card */}
+            {data.function && (
+              <Card title={t.geneDetail.sections.protein} colors={colors}>
+                {data.proteinName && (
+                  <Text style={[styles.proteinName, { color: colors.text }]}>{data.proteinName}</Text>
+                )}
+          
+                <View style={[styles.functionBox, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.functionLabel, { color: colors.text }]}>{t.geneDetail.fields.function}</Text>
+                  <Text style={[styles.functionText, { color: colors.textSecondary }]} numberOfLines={expandedFunction ? undefined : 4}>
+                    {functionSegments.map((seg: any, i: number) => {
+                      if (seg.type === 'ref') {
+                        return (
+                          <Text key={`ref_${i}`} style={{ color: colors.accent, fontSize: 11, fontWeight: '600' }}>
+                            {seg.content}
+                          </Text>
+                        );
+                      }
+                      if (seg.type === 'gene') {
+                        return (
+                          <Text key={`gene_${i}`} style={{ fontStyle: 'italic' }}>
+                            {seg.content}
+                          </Text>
+                        );
+                      }
+                      return <Text key={`txt_${i}`}>{seg.content}</Text>;
+                    })}
+                  </Text>
+                  {data.function.length > 200 && (
+                    <Pressable onPress={() => setExpandedFunction(!expandedFunction)}>
+                      <Text style={[styles.readMore, { color: colors.accent }]}>
+                        {expandedFunction ? t.geneDetail.readLess : t.geneDetail.readMore}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </Card>
+            )}
+
+            {/* References Card - collapsible */}
+            {functionReferences.length > 0 && (
+              <CollapsibleCard 
+                title={`${t.geneDetail.sections2.references} (${functionReferences.length})`}
+                expanded={refsExpanded}
+                onToggle={() => setRefsExpanded(!refsExpanded)}
+                colors={colors}
+              >
+                <View style={[styles.refHeaderRow, { borderBottomColor: colors.borderHairline }]}> 
+                  <Text style={[styles.refHeaderText, { color: colors.textMuted }]}>{t.geneDetail.fields.pubmed}</Text>
+                  {loadingRefs && <ActivityIndicator size="small" color={colors.accent} />}
+                </View>
+                {functionReferences.map((ref) => (
+                  <Pressable
+                    key={ref.pubmedId}
+                    style={[styles.refRow, { borderBottomColor: colors.borderHairline }]}
+                    onPress={() => Linking.openURL(`https://pubmed.ncbi.nlm.nih.gov/${ref.pubmedId}/`)}
+                  >
+                    <Text style={[styles.refIndex, { color: colors.textSecondary }]}>{toSuperscript(ref.index)}</Text>
+                    <Text style={[styles.refCitation, { color: colors.text }]} numberOfLines={1}>
+                      {refCitations[ref.pubmedId] || `PMID:${ref.pubmedId}`}
+                    </Text>
+                  </Pressable>
+                ))}
+              </CollapsibleCard>
+            )}
+
+            {/* Interactions Card */}
+            {data.interactors && data.interactors.length > 0 && (
+              <Card title={t.geneDetail.sections.interactions} colors={colors}>
+                <View style={styles.interactionsList}>
+                  {data.interactors.slice(0, 6).map((int, i) => (
+                    <Pressable
+                      key={i}
+                      style={[styles.interactionChip, { borderColor: colors.borderHairline }]}
+                      onPress={() => navigation.push('GeneDetail', { symbol: int.gene, organism: data.organism })}
+                    >
+                      <Text style={[styles.interactionText, { color: colors.accent }]}>{int.gene}</Text>
+                    </Pressable>
+                  ))}
+                  {data.interactors.length > 6 && (
+                    <Pressable
+                      style={[styles.interactionChip, { borderColor: colors.borderHairline }]}
+                      onPress={() => setShowAllInteractors(true)}
+                    >
+                      <Text style={[styles.interactionText, { color: colors.textMuted }]}>
+                        +{data.interactors.length - 6}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </Card>
+            )}
+
+            {/* Structures Card */}
+            {hasStructures && (
+              <Card title={t.geneDetail.sections.structure} colors={colors}>
+                {pdbItems.slice(0, 3).map((pdb) => (
+                  <StructureItem
+                    key={pdb.id}
+                    id={pdb.id}
+                    method={pdb.method || t.geneDetail.fields.experimentalStructure}
+                    resolution={pdb.resolution}
+                    onPress={() => Linking.openURL(`https://www.rcsb.org/structure/${pdb.id}`)}
+                    colors={colors}
+                  />
+                ))}
+                {data.alphafoldUrl && (
+                  <StructureItem
+                    id="AlphaFold"
+                    method="Prédit (IA)"
+                    onPress={() => Linking.openURL(data.alphafoldUrl!)}
+                    colors={colors}
+                  />
+                )}
+              </Card>
+            )}
+
+            {/* Pathways Card */}
+            {biocycData?.pathways && biocycData.pathways.length > 0 && (
+              <Card title={t.geneDetail.sections2.metabolicPathways} colors={colors}>
+                <View style={styles.pathwaysList}>
+                  {biocycData.pathways.slice(0, 4).map((pw, i) => (
+                    <View key={i} style={[styles.pathwayChip, { borderColor: colors.borderHairline }]}>
+                      <Text style={[styles.pathwayText, { color: colors.text }]}>{pw.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            )}
+
+            {/* Quick Info */}
+            <Card title={t.geneDetail.sections2.information} colors={colors}>
+              {data.sequenceLength && (
+                <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.sequenceLength}</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{data.sequenceLength} aa</Text>
+                </View>
+              )}
+              {data.mass && (
+                <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.sequenceMass}</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{Math.round(data.mass)} kDa</Text>
+                </View>
+              )}
+              {data.chromosome && (
+                <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.chromosome}</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{data.chromosome}</Text>
+                </View>
+              )}
+              {data.start && data.stop && (
+                <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.position}</Text>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>
+                    {data.start.toLocaleString()} – {data.stop.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+            </Card>
+
+            {/* External Links */}
+            <Card title={t.geneDetail.links.externalLinks} colors={colors}>
+              <View style={styles.linksRow}>
+                {data.links?.ncbi && (
+                  <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.ncbi!)}>
+                    <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.ncbiGene}</Text>
+                  </Pressable>
+                )}
+                {data.links?.uniprot && (
+                  <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.uniprot!)}>
+                    <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.uniprot}</Text>
+                  </Pressable>
+                )}
+                {data.links?.string && (
+                  <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.string!)}>
+                    <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.string}</Text>
+                  </Pressable>
+                )}
+                {biocycData?.links?.biocyc && (
+                  <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(biocycData.links.biocyc!)}>
+                    <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.biocyc}</Text>
+                  </Pressable>
+                )}
+              </View>
+            </Card>
+          </>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════════════════
+            NOTES SECTION - Always shown, directly in the page
+            ═══════════════════════════════════════════════════════════════════════════════ */}
+        <NotesInlineSection
           entityType="gene"
           entityId={geneEntityId}
           entityName={data.symbol}
@@ -166,240 +402,41 @@ export function GeneDetailScreen({ route }: Props) {
           onRefresh={refreshNotes}
           loading={notesLoading}
         />
-      ) : (
-        /* Recap Mode */
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Sources Card - collapsible */}
-        <CollapsibleCard 
-          title={t.geneDetail.sources} 
-          expanded={sourcesExpanded}
-          onToggle={() => setSourcesExpanded(!sourcesExpanded)}
-          colors={colors}
-        >
-          <SourceItem name={t.geneDetail.sourceNames.ncbiGene} available={!!data.ncbiGeneId} url={data.links?.ncbi} colors={colors} />
-          <SourceItem name={t.geneDetail.sourceNames.uniprot} available={!!data.uniprotId} url={data.links?.uniprot} colors={colors} />
-          <SourceItem name={t.geneDetail.sourceNames.ecocyc} available={!!biocycData} url={biocycData?.links?.biocyc} colors={colors} />
-        </CollapsibleCard>
-
-        {/* Description Card */}
-        <Card title={t.geneDetail.sections.protein} colors={colors}>
-          {data.proteinName && (
-            <Text style={[styles.proteinName, { color: colors.text }]}>{data.proteinName}</Text>
-          )}
-          
-          {data.function && (
-            <View style={[styles.functionBox, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.functionLabel, { color: colors.text }]}>{t.geneDetail.fields.function}</Text>
-              <Text style={[styles.functionText, { color: colors.textSecondary }]} numberOfLines={expandedFunction ? undefined : 4}>
-                {functionSegments.map((seg: any, i: number) => {
-                  if (seg.type === 'ref') {
-                    return (
-                      <Text key={`ref_${i}`} style={{ color: colors.accent, fontSize: 11, fontWeight: '600' }}>
-                        {seg.content}
-                      </Text>
-                    );
-                  }
-                  if (seg.type === 'gene') {
-                    return (
-                      <Text key={`gene_${i}`} style={{ fontStyle: 'italic' }}>
-                        {seg.content}
-                      </Text>
-                    );
-                  }
-                  return <Text key={`txt_${i}`}>{seg.content}</Text>;
-                })}
-              </Text>
-              {data.function.length > 200 && (
-                <Pressable onPress={() => setExpandedFunction(!expandedFunction)}>
-                  <Text style={[styles.readMore, { color: colors.accent }]}>
-                    {expandedFunction ? t.geneDetail.readLess : t.geneDetail.readMore}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-        </Card>
-
-        {/* References Card - collapsible */}
-        {functionReferences.length > 0 && (
-          <CollapsibleCard 
-            title={`${t.geneDetail.sections2.references} (${functionReferences.length})`}
-            expanded={refsExpanded}
-            onToggle={() => setRefsExpanded(!refsExpanded)}
-            colors={colors}
-          >
-            <View style={[styles.refHeaderRow, { borderBottomColor: colors.borderHairline }]}> 
-              <Text style={[styles.refHeaderText, { color: colors.textMuted }]}>{t.geneDetail.fields.pubmed}</Text>
-              {loadingRefs && <ActivityIndicator size="small" color={colors.accent} />}
-            </View>
-            {functionReferences.map((ref) => (
-              <Pressable
-                key={ref.pubmedId}
-                style={[styles.refRow, { borderBottomColor: colors.borderHairline }]}
-                onPress={() => Linking.openURL(`https://pubmed.ncbi.nlm.nih.gov/${ref.pubmedId}/`)}
-              >
-                <Text style={[styles.refIndex, { color: colors.textSecondary }]}>{toSuperscript(ref.index)}</Text>
-                <Text style={[styles.refCitation, { color: colors.text }]} numberOfLines={1}>
-                  {refCitations[ref.pubmedId] || `PMID:${ref.pubmedId}`}
-                </Text>
-              </Pressable>
-            ))}
-          </CollapsibleCard>
-        )}
-
-        {/* Interactions Card */}
-        {data.interactors && data.interactors.length > 0 && (
-          <Card title={t.geneDetail.sections.interactions} colors={colors}>
-            <View style={styles.interactionsList}>
-              {data.interactors.slice(0, 6).map((int, i) => (
-                <Pressable
-                  key={i}
-                  style={[styles.interactionChip, { borderColor: colors.borderHairline }]}
-                  onPress={() => navigation.push('GeneDetail', { symbol: int.gene, organism: data.organism })}
-                >
-                  <Text style={[styles.interactionText, { color: colors.accent }]}>{int.gene}</Text>
-                </Pressable>
-              ))}
-              {data.interactors.length > 6 && (
-                <Pressable
-                  style={[styles.interactionChip, { borderColor: colors.borderHairline }]}
-                  onPress={() => setShowAllInteractors(true)}
-                >
-                  <Text style={[styles.interactionText, { color: colors.textMuted }]}>
-                    +{data.interactors.length - 6}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </Card>
-        )}
-
-        {/* Structures Card */}
-        {hasStructures && (
-          <Card title={t.geneDetail.sections.structure} colors={colors}>
-            {pdbItems.slice(0, 3).map((pdb) => (
-              <StructureItem
-                key={pdb.id}
-                id={pdb.id}
-                method={pdb.method || t.geneDetail.fields.experimentalStructure}
-                resolution={pdb.resolution}
-                onPress={() => Linking.openURL(`https://www.rcsb.org/structure/${pdb.id}`)}
-                colors={colors}
-              />
-            ))}
-            {data.alphafoldUrl && (
-              <StructureItem
-                id="AlphaFold"
-                method="Prédit (IA)"
-                onPress={() => Linking.openURL(data.alphafoldUrl!)}
-                colors={colors}
-              />
-            )}
-          </Card>
-        )}
-
-        {/* Pathways Card */}
-        {biocycData?.pathways && biocycData.pathways.length > 0 && (
-          <Card title={t.geneDetail.sections2.metabolicPathways} colors={colors}>
-            <View style={styles.pathwaysList}>
-              {biocycData.pathways.slice(0, 4).map((pw, i) => (
-                <View key={i} style={[styles.pathwayChip, { borderColor: colors.borderHairline }]}>
-                  <Text style={[styles.pathwayText, { color: colors.text }]}>{pw.name}</Text>
-                </View>
-              ))}
-            </View>
-          </Card>
-        )}
-
-        {/* Quick Info */}
-        <Card title={t.geneDetail.sections2.information} colors={colors}>
-          {data.sequenceLength && (
-            <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.sequenceLength}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{data.sequenceLength} aa</Text>
-            </View>
-          )}
-          {data.mass && (
-            <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.sequenceMass}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{Math.round(data.mass)} kDa</Text>
-            </View>
-          )}
-          {data.chromosome && (
-            <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.chromosome}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{data.chromosome}</Text>
-            </View>
-          )}
-          {data.start && data.stop && (
-            <View style={[styles.infoRow, { borderBottomColor: colors.borderHairline }]}>
-              <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{t.geneDetail.fields.position}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>
-                {data.start.toLocaleString()} – {data.stop.toLocaleString()}
-              </Text>
-            </View>
-          )}
-        </Card>
-
-        {/* External Links */}
-        <Card title={t.geneDetail.links.externalLinks} colors={colors}>
-          <View style={styles.linksRow}>
-            {data.links?.ncbi && (
-              <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.ncbi!)}>
-                <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.ncbiGene}</Text>
-              </Pressable>
-            )}
-            {data.links?.uniprot && (
-              <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.uniprot!)}>
-                <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.uniprot}</Text>
-              </Pressable>
-            )}
-            {data.links?.string && (
-              <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(data.links.string!)}>
-                <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.string}</Text>
-              </Pressable>
-            )}
-            {biocycData?.links?.biocyc && (
-              <Pressable style={[styles.linkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(biocycData.links.biocyc!)}>
-                <Text style={[styles.linkBtnText, { color: colors.accent }]}>{t.geneDetail.sourceNames.biocyc}</Text>
-              </Pressable>
-            )}
-          </View>
-        </Card>
 
         <View style={{ height: 120 }} />
       </ScrollView>
-      )}
 
-      {/* Full Interactors Modal */}
-      <Modal
-        visible={showAllInteractors}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAllInteractors(false)}
-      >
-        <Pressable style={styles.menuOverlay} onPress={() => setShowAllInteractors(false)}>
-          <View style={[styles.menu, { backgroundColor: colors.card, minWidth: 260 }]}>
-            <View style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]} pointerEvents="none">
-              <Text style={[styles.menuItemText, { color: colors.textMuted }]}>
-                Interactions ({data.interactors?.length ?? 0})
-              </Text>
+      {/* Full Interactors Modal - Only relevant when API sections shown */}
+      {SHOW_API_SECTIONS && (
+        <Modal
+          visible={showAllInteractors}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAllInteractors(false)}
+        >
+          <Pressable style={styles.menuOverlay} onPress={() => setShowAllInteractors(false)}>
+            <View style={[styles.menu, { backgroundColor: colors.card, minWidth: 260 }]}>
+              <View style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]} pointerEvents="none">
+                <Text style={[styles.menuItemText, { color: colors.textMuted }]}>
+                  Interactions ({data.interactors?.length ?? 0})
+                </Text>
+              </View>
+              {(data.interactors ?? []).map((int, i) => (
+                <Pressable
+                  key={`${int.gene}_${i}`}
+                  style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]}
+                  onPress={() => {
+                    setShowAllInteractors(false);
+                    navigation.push('GeneDetail', { symbol: int.gene, organism: data.organism });
+                  }}
+                >
+                  <Text style={[styles.menuItemText, { color: colors.text }]}>{int.gene}</Text>
+                </Pressable>
+              ))}
             </View>
-            {(data.interactors ?? []).map((int, i) => (
-              <Pressable
-                key={`${int.gene}_${i}`}
-                style={[styles.menuItem, { borderBottomColor: colors.borderHairline }]}
-                onPress={() => {
-                  setShowAllInteractors(false);
-                  navigation.push('GeneDetail', { symbol: int.gene, organism: data.organism });
-                }}
-              >
-                <Text style={[styles.menuItemText, { color: colors.text }]}>{int.gene}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+          </Pressable>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -429,21 +466,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.lg },
   
-  // Notes Mini Card
-  notesCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  notesCardLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  notesCardIcon: { fontSize: 16 },
-  notesCardTitle: { fontSize: 15, fontWeight: '500' },
-  notesCardArrow: { fontSize: 18, fontWeight: '300' },
-  
   // Description
   proteinName: { fontSize: 14, marginBottom: spacing.md },
   functionBox: { borderRadius: 12, padding: spacing.md },
@@ -462,7 +484,7 @@ const styles = StyleSheet.create({
   pathwayText: { fontSize: 12 },
   
   // Info
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   infoLabel: { fontSize: 13 },
   infoValue: { fontSize: 13, fontWeight: '500' },
   

@@ -2,17 +2,15 @@
  * MainTabs - Bottom Tab Navigation
  * Premium "Quiet Luxury" style - Icon-only, no labels
  * 
- * Tabs: Inbox | Articles | Gènes | Chercheurs | Conférences
+ * Tabs: Notes | Recherche | Inbox
  */
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GenesScreen } from '../screens/GenesScreen';
-import { ResearchersScreen } from '../screens/ResearchersScreen';
-import { ArticlesScreen } from '../screens/ArticlesScreen';
-import { ConferencesScreen } from '../screens/ConferencesScreen';
+import { NotesScreen } from '../screens/NotesScreen';
+import { SearchScreen } from '../screens/SearchScreen';
 import { InboxScreen } from '../screens/InboxScreen';
 import { useTheme, spacing } from '../theme';
 import type { MainTabsParamList } from './types';
@@ -54,11 +52,9 @@ export function MainTabs() {
         },
       })}
     >
+      <Tab.Screen name="Notes" component={NotesScreen} />
+      <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Inbox" component={InboxScreen} />
-      <Tab.Screen name="Articles" component={ArticlesScreen} />
-      <Tab.Screen name="Genes" component={GenesScreen} />
-      <Tab.Screen name="Researchers" component={ResearchersScreen} />
-      <Tab.Screen name="Conferences" component={ConferencesScreen} />
     </Tab.Navigator>
   );
 }

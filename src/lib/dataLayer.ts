@@ -13,7 +13,7 @@
  * - Update UI when fresh data arrives
  */
 
-import { cachedStorage, createNamespacedStorage } from './storage';
+import { cachedStorage, createNamespacedStorage, storage } from './storage';
 import type { GeneSummary } from './api';
 
 // ============ Cache Configuration ============
@@ -62,12 +62,10 @@ export function createErrorState<T>(error: Error, cachedData?: T): DataState<T> 
 
 // ============ Gene Data Layer ============
 
-const geneStore = createNamespacedStorage('genes');
-
 export type GeneCacheKey = `${string}:${string}`; // symbol:organism
 
 function getGeneCacheKey(symbol: string, organism: string): GeneCacheKey {
-  return `${symbol.toLowerCase()}:${organism.toLowerCase()}` as GeneCacheKey;
+  return `genes:${symbol.toLowerCase()}:${organism.toLowerCase()}` as GeneCacheKey;
 }
 
 export const geneDataLayer = {
@@ -133,14 +131,18 @@ export const geneDataLayer = {
    */
   async invalidate(symbol: string, organism: string): Promise<void> {
     const key = getGeneCacheKey(symbol, organism);
-    await geneStore.remove(key);
+    await storage.removeItem(key);
   },
 
   /**
    * Clear all gene cache
    */
   async clearAll(): Promise<void> {
-    await geneStore.clear();
+    const keys = await storage.getAllKeys();
+    const geneKeys = keys.filter(k => k.startsWith('genes:'));
+    if (geneKeys.length > 0) {
+      await storage.multiRemove([...geneKeys]);
+    }
   },
 
   /**

@@ -125,20 +125,6 @@ export function SettingsScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Collections Card */}
-        <Pressable
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
-          onPress={() => navigation.navigate('Collections')}
-        >
-          <View style={styles.navRow}>
-            <View style={styles.navLeft}>
-              <TabIcon name="Collections" size={20} color={colors.textMuted} />
-              <Text style={[styles.optionText, { color: colors.text }]}>Collections</Text>
-            </View>
-            <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
-          </View>
-        </Pressable>
-
         {/* Privacy Card */}
         <Pressable
           style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}

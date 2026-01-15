@@ -52,11 +52,21 @@ export async function getResearcher(id: string): Promise<ResearcherWithRelations
     .select('conference:conferences(*)')
     .eq('researcher_id', id);
 
+  // Get collaborators (other researchers)
+  const { data: collaboratorRels } = await supabaseWithAuth
+    .from('researcher_collaborators')
+    .select('collaborator:researchers!collaborator_id(*), relationship_type')
+    .eq('researcher_id', id);
+
   return {
     ...data,
     genes: geneRels ?? [],
     articles: articleRels?.map((r: any) => r.article).filter(Boolean) ?? [],
     conferences: confRels?.map((r: any) => r.conference).filter(Boolean) ?? [],
+    collaborators: collaboratorRels?.map((r: any) => ({
+      ...r.collaborator,
+      relationship_type: r.relationship_type
+    })).filter(Boolean) ?? [],
   };
 }
 
@@ -144,6 +154,70 @@ export async function unlinkGeneFromResearcher(
     .eq('researcher_id', researcherId);
 
   if (error) throw wrapError('suppression liaison', error);
+}
+
+// ============================================================================
+// Researcher Collaborators (colleagues, team members)
+// ============================================================================
+
+/**
+ * Link two researchers together (colleague, collaborator, etc.)
+ * Creates bidirectional relationship: A -> B and B -> A
+ */
+export async function linkResearcherCollaborator(
+  researcherId: string,
+  collaboratorId: string,
+  relationshipType?: string
+): Promise<void> {
+  const userId = await requireUserId();
+
+  if (researcherId === collaboratorId) {
+    throw new Error('Un chercheur ne peut pas être son propre collaborateur.');
+  }
+  
+  const insertOne = async (fromId: string, toId: string) => {
+    const { error } = await supabaseWithAuth
+      .from('researcher_collaborators')
+      .insert({
+        user_id: userId,
+        researcher_id: fromId,
+        collaborator_id: toId,
+        relationship_type: relationshipType,
+      });
+
+    if (error && error.code !== '23505') {
+      throw wrapError('liaison chercheur', error);
+    }
+  };
+
+  // Ensure both directions exist, even if one already exists
+  await insertOne(researcherId, collaboratorId);
+  await insertOne(collaboratorId, researcherId);
+}
+
+/**
+ * Unlink two researchers (removes both directions)
+ */
+export async function unlinkResearcherCollaborator(
+  researcherId: string,
+  collaboratorId: string
+): Promise<void> {
+  const userId = await requireUserId();
+  
+  // Delete both directions
+  await supabaseWithAuth
+    .from('researcher_collaborators')
+    .delete()
+    .eq('user_id', userId)
+    .eq('researcher_id', researcherId)
+    .eq('collaborator_id', collaboratorId);
+
+  await supabaseWithAuth
+    .from('researcher_collaborators')
+    .delete()
+    .eq('user_id', userId)
+    .eq('researcher_id', collaboratorId)
+    .eq('collaborator_id', researcherId);
 }
 
 // ============================================================================

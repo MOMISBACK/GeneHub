@@ -26,7 +26,6 @@ import type { MainTabsParamList, RootStackParamList } from '../navigation/types'
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
-import { GlobalSearchButton } from '../components/header';
 import { listArticles, createArticle } from '../lib/knowledge';
 import { fetchPubMedArticle } from '../lib/pubmed';
 import { fetchArticleFromDoi, searchCrossrefByTitle, type CrossrefSearchResult } from '../lib/crossref';
@@ -48,6 +47,7 @@ export function ArticlesScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,13 +92,20 @@ export function ArticlesScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Articles</Text>
         <View style={styles.headerActions}>
-          <GlobalSearchButton />
           <Pressable
-            style={[styles.addBtn, { backgroundColor: colors.accent }]}
-            onPress={() => setShowAddModal(true)}
+            style={[styles.advancedToggle, { backgroundColor: advancedMode ? colors.accent : colors.surface, borderColor: colors.borderHairline }]}
+            onPress={() => setAdvancedMode(prev => !prev)}
           >
-            <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
+            <Text style={[styles.advancedToggleText, { color: advancedMode ? '#000' : colors.textMuted }]}>Avancé</Text>
           </Pressable>
+          {advancedMode && (
+            <Pressable
+              style={[styles.addBtn, { backgroundColor: colors.accent }]}
+              onPress={() => setShowAddModal(true)}
+            >
+              <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -136,7 +143,7 @@ export function ArticlesScreen({ navigation }: Props) {
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
             {searchQuery ? 'Aucun résultat' : 'Aucun article'}
           </Text>
-          {!searchQuery && (
+          {!searchQuery && advancedMode && (
             <Pressable
               style={[styles.addFirstBtn, { borderColor: colors.accent }]}
               onPress={() => setShowAddModal(true)}
@@ -654,6 +661,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  advancedToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  advancedToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   addBtn: {
     width: 36,

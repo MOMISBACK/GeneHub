@@ -1,10 +1,12 @@
 # GeneHub Architecture
 
-> Dernière mise à jour: 13 Janvier 2026  
+> Dernière mise à jour: 15 Janvier 2026  
 > Refactorisé avec hooks pattern, Knowledge Base API, Collections, Sync Status, Inbox amélioré, Import DOI/PMID amélioré  
 > ✨ **Design System v3.2** - Refonte visuelle moderne (voir [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md))
 > 🔒 **User Data Isolation** - Chaque utilisateur a ses propres données (RLS strict)
 > 🚀 **API Cache** - Cache partagé pour NCBI, UniProt, Crossref, PubMed
+> 📝 **Mode Notes** - Focus sur la prise de notes et l'interconnexion via tags (API auto-fetch désactivé)
+> 🧪 **Audit code** - Voir [AUDIT_2026_01_15.md](./AUDIT_2026_01_15.md)
 
 ## 📁 Structure du Projet
 
@@ -31,8 +33,8 @@ genehub-bacteria/
 │   │       └── index.ts
 │   │
 │   ├── screens/                   # 17 écrans
-│   │   ├── GenesScreen.tsx        # Tab "Genes" - Liste des gènes sauvegardés
-│   │   ├── GeneDetailScreen.tsx   # Détail d'un gène
+│   │   ├── GenesScreen.tsx        # Tab "Genes" - Création fiches + liste des gènes sauvegardés
+│   │   ├── GeneDetailScreen.tsx   # Détail d'un gène (focus: notes et tags)
 │   │   ├── SearchScreen.tsx       # Recherche globale sectionnée
 │   │   ├── ResearchersScreen.tsx  # Tab "Chercheurs" - Répertoire
 │   │   ├── ResearcherDetailScreen.tsx
@@ -66,7 +68,7 @@ genehub-bacteria/
 │   │   ├── utils.ts               # Utilitaires
 │   │   │
 │   │   ├── hooks/                 # Custom hooks
-│   │   │   ├── useGeneData.ts     # Loading, caching, save/unsave
+│   │   │   ├── useGeneData.ts     # Loading, caching, save/unsave (API fetch désactivable)
 │   │   │   ├── useInbox.ts        # ✨ Inbox items CRUD
 │   │   │   ├── useFunctionReferences.ts  # Citations PubMed
 │   │   │   └── index.ts
@@ -156,6 +158,51 @@ Le modal "Nouvel article" offre deux modes:
 - `src/lib/pubmed.ts` - Client PubMed avec rate limiting
 - `src/lib/crossref.ts` - Client Crossref + `searchCrossrefByTitle()`
 
+## 🧬 Mode Notes pour les Gènes (Focus Actuel)
+
+> **État actuel**: Les appels API automatiques (NCBI, UniProt, EcoCyc/BioCyc) sont **DÉSACTIVÉS**.
+> L'application se concentre sur la création manuelle de fiches gènes et la prise de notes.
+
+### Fonctionnement Actuel
+
+#### Création de Fiche Gène
+1. **Bouton "Nouveau"** dans l'écran Gènes
+2. **Saisie du symbole** (ex: dnaA, lacZ, rpoB)
+3. **Nom de protéine optionnel**
+4. **Création** → Navigation automatique vers la fiche
+
+#### Fiche Gène - Vue Unifiée
+La fiche gène est maintenant une **vue unique** (plus de tabs Recap/Notes):
+- **Carte "Informations"** en haut (symbole, organisme, protéine)
+- **Section "Notes"** directement en dessous
+- Possibilité d'ajouter des notes et des tags pour interconnecter
+
+#### Notes Liées via Tag
+Quand une note est liée via un tag (et non créée directement sur l'entité):
+- **Affichage du tag de liaison** au lieu de "Liée via tag"
+- Le tag est cliquable pour naviguer vers l'entité source
+- La bordure gauche prend la couleur du tag
+
+### Réactivation des API (Future)
+
+Pour réactiver les résumés automatiques via API:
+
+1. **Dans `src/lib/hooks/useGeneData.ts`**:
+   ```typescript
+   const ENABLE_API_FETCH = true;  // Était false
+   ```
+
+2. **Dans `src/screens/GeneDetailScreen.tsx`**:
+   ```typescript
+   const SHOW_API_SECTIONS = true;  // Était false
+   ```
+
+### Ce qui est conservé (mais désactivé)
+- Edge Functions: `gene-summary`, `gene-biocyc`
+- Types API: `GeneSummary`, `BiocycGeneData`
+- Code de fetch API dans `useGeneData.ts`
+- Sections UI dans `GeneDetailScreen.tsx` (Sources, Fonction, Interactions, Structures, Pathways, Liens externes)
+
 ## 🏷️ Tags et Entity Linking
 
 ### Convention de Nommage
@@ -215,7 +262,31 @@ Une note apparaît sur la page d'une entité si:
 
 ### Indicateur Visuel
 
-Les notes liées via tag ont un badge "Liée via tag" et une bordure colorée à gauche pour les distinguer des notes natives.
+Les notes liées via tag ont:
+- Un **badge avec le tag de liaison** (ex: `#dupont` pour une note d'un chercheur)
+- Le badge est **cliquable** pour naviguer vers l'entité source
+- Une **bordure colorée à gauche** (couleur du tag)
+
+### Tags → Relations dans Recap
+
+Les tags dans les notes remplissent automatiquement les sections du Recap:
+
+**Exemple - Chercheur:**
+1. Créer une note sur le chercheur "Dupont"
+2. Ajouter le tag `#dnak` (lié au gène dnaK)
+3. Dans le Recap de Dupont, section "Protéines étudiées":
+   - dnaK apparaît avec un badge tag et bordure pointillée (vient d'un tag)
+
+**Entités extraites des tags:**
+| Section | Tags extraits |
+|---------|---------------|
+| Protéines étudiées | `entity_type = 'gene'` |
+| Publications | `entity_type = 'article'` |
+| Conférences | `entity_type = 'conference'` |
+
+**Indicateurs visuels:**
+- **Bordure pointillée** - Relation vient d'un tag (vs bordure solide = relation directe)
+- **Badge tag** - Préfixe sur les items issus de tags
 
 ### Comportement Édition/Suppression
 
@@ -226,22 +297,24 @@ Les notes liées via tag ont un badge "Liée via tag" et une bordure colorée à
 ### Implémentation
 
 ```typescript
-// listNotesForEntity dans knowledge.ts et notes.service.ts
+// listNotesForEntity dans notes.service.ts
 // 1. Récupère les notes directes
-// 2. Trouve les tags liés à l'entité
+// 2. Trouve les tags liés à l'entité (avec leurs données complètes)
 // 3. Trouve les notes ayant ces tags
-// 4. Fusionne et déduplique avec isLinkedViaTag flag
+// 4. Fusionne et déduplique avec isLinkedViaTag flag + linkingTag
 
 interface EntityNote {
   // ... autres champs
-  isLinkedViaTag?: boolean; // true si note apparaît via tag
+  isLinkedViaTag?: boolean;  // true si note apparaît via tag
+  linkingTag?: Tag;          // Le tag qui lie cette note (pour affichage)
 }
 ```
 
 ## �🔑 Hooks Pattern
 
 ```typescript
-// useGeneData - Données gène avec cache
+// useGeneData - Données gène avec cache (API fetch désactivé par défaut)
+// Note: ENABLE_API_FETCH = false → pas d'appels NCBI/UniProt/BioCyc
 const { loading, data, biocycData, error, isSaved, refresh, toggleSave } = 
   useGeneData(symbol, organism, t);
 
@@ -280,8 +353,9 @@ const { items, loading, addItem, deleteItem, updateStatus, archiveItem } =
 - tags.service, notes.service, inbox.service, collections.service
 - export.ts, crossref.ts
 
-### Edge Functions (2)
-- gene-summary, gene-biocyc
+### Edge Functions (2) - Désactivées par défaut
+- gene-summary - Résumé via NCBI/UniProt (ENABLE_API_FETCH = false)
+- gene-biocyc - Données BioCyc/EcoCyc (ENABLE_API_FETCH = false)
 
 ### State Management
 - **Zustand**: syncStore (pending/failed mutations)
@@ -291,7 +365,7 @@ const { items, loading, addItem, deleteItem, updateStatus, archiveItem } =
 
 | Table | Accès |
 |-------|-------|
-| articles, researchers, conferences | Lecture: tous auth |
+| articles, researchers, conferences | Owner only |
 | notes, tags, inbox_items | Owner only |
 | collections, collection_items | Owner only |
 
@@ -331,7 +405,8 @@ Les items texte peuvent être automatiquement liés via tags:
 ## ⚠️ Points d'Attention
 
 1. **Google OAuth** - Fonctionne uniquement sur Dev Build (pas Expo Go, pas web)
-3. **Migrations SQL** - 8 migrations à appliquer via `supabase db push`
+2. **Migrations SQL** - 8 migrations à appliquer via `supabase db push`
 3. **Zustand** - Installé pour sync status tracking
 4. **QR Code** - Fonctionnalité temporairement désactivée (problème modules natifs)
 5. **Tags Gènes** - Format `symbol-orgcode` obligatoire pour unicité (ex: `cnox-eco`)
+6. **API Gènes désactivées** - `ENABLE_API_FETCH = false` dans useGeneData.ts, `SHOW_API_SECTIONS = false` dans GeneDetailScreen.tsx

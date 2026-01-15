@@ -21,7 +21,7 @@ export function GlobalSearchButton() {
   return (
     <Pressable
       style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => navigation.navigate('Search')}
+      onPress={() => navigation.navigate('Main', { screen: 'Search' })}
       hitSlop={8}
     >
       <Icon name="search" size={18} color={colors.textSecondary} />

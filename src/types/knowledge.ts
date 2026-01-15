@@ -122,6 +122,8 @@ export interface EntityNote {
   tags?: Tag[];
   // Flag: true if this note appears via a tag link (not native to this entity)
   isLinkedViaTag?: boolean;
+  // The tag that links this note to the current entity (when isLinkedViaTag=true)
+  linkingTag?: Tag;
 }
 
 export type EntityNoteInsert = Omit<EntityNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'tags'>;
@@ -177,6 +179,7 @@ export interface ResearcherWithRelations extends Researcher {
   genes?: { gene_symbol: string; organism: string; role?: string }[];
   articles?: Article[];
   conferences?: Conference[];
+  collaborators?: (Researcher & { relationship_type?: string })[];
 }
 
 export interface ArticleWithRelations extends Article {

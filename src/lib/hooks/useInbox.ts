@@ -7,6 +7,7 @@ import type { InboxItem, InboxStatus } from '../../types/inbox';
 import {
   listInboxItems,
   listActiveInbox,
+  listAllInbox,
   createInboxItem,
   archiveInboxItem,
   restoreInboxItem,
@@ -55,7 +56,7 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxResult {
     try {
       let result;
       if (status === 'all') {
-        result = await listActiveInbox();
+        result = await listAllInbox();
       } else {
         result = await listInboxItems({ status });
       }

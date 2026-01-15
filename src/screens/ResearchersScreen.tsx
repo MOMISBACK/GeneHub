@@ -1,5 +1,5 @@
 /**
- * ResearchersScreen - Liste des chercheurs avec ajout
+ * ResearchersScreen - Liste des chercheurs (mode avancé)
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,7 +26,6 @@ import type { MainTabsParamList, RootStackParamList } from '../navigation/types'
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
-import { GlobalSearchButton } from '../components/header';
 import { listResearchers, createResearcher } from '../lib/knowledge';
 import type { Researcher, ResearcherInsert } from '../types/knowledge';
 
@@ -46,6 +45,7 @@ export function ResearchersScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,19 +91,20 @@ export function ResearchersScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Chercheurs</Text>
         <View style={styles.headerActions}>
-          <GlobalSearchButton />
           <Pressable
-            style={[styles.qrScanBtn, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
-            onPress={() => navigation.navigate('ScanQr')}
+            style={[styles.advancedToggle, { backgroundColor: advancedMode ? colors.accent : colors.surface, borderColor: colors.borderHairline }]}
+            onPress={() => setAdvancedMode((prev) => !prev)}
           >
-            <Icon name="qr" size={16} color={colors.textMuted} />
+            <Text style={[styles.advancedToggleText, { color: advancedMode ? '#000' : colors.textMuted }]}>Avancé</Text>
           </Pressable>
-          <Pressable
-            style={[styles.addBtn, { backgroundColor: colors.accent }]}
-            onPress={() => setShowAddModal(true)}
-          >
-            <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
-          </Pressable>
+          {advancedMode && (
+            <Pressable
+              style={[styles.addBtn, { backgroundColor: colors.accent }]}
+              onPress={() => setShowAddModal(true)}
+            >
+              <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -334,16 +335,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  advancedToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  advancedToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
   title: {
     ...typography.h1,
-  },
-  qrScanBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   addBtn: {
     width: 36,

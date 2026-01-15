@@ -188,9 +188,6 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backText, { color: colors.accent }]}>←</Text>
-        </Pressable>
         <View style={styles.headerInfo}>
           <View style={styles.titleRow}>
             <View style={[styles.colorDot, { backgroundColor: collection.color || colors.accent }]} />

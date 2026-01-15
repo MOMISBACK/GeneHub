@@ -82,6 +82,7 @@ export function InboxScreen({ navigation }: Props) {
 
   // Tags for auto-linking
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   // Live detection as user types
   const handleInputChange = useCallback((text: string) => {
@@ -271,6 +272,16 @@ export function InboxScreen({ navigation }: Props) {
     // Based on detected type, offer the primary action directly
     
     if (Platform.OS === 'web') {
+      if (!advancedMode && item.detected_type !== 'text') {
+        const confirmed = await showConfirm(
+          'Archiver',
+          'Mode avancé désactivé. Archiver cet élément ? ',
+          'Archiver',
+          'Annuler'
+        );
+        if (confirmed) handleArchive(item.id);
+        return;
+      }
       // Web: Direct action based on type
       if (item.detected_type === 'pmid') {
         const confirmed = await showConfirm(
@@ -322,21 +333,21 @@ export function InboxScreen({ navigation }: Props) {
     ];
 
     // Type-specific conversion actions
-    if (item.detected_type === 'pmid') {
+    if (advancedMode && item.detected_type === 'pmid') {
       actions.push({
         text: '📄 Importer depuis PubMed',
         onPress: () => handleConvertPmid(item),
       });
     }
     
-    if (item.detected_type === 'doi') {
+    if (advancedMode && item.detected_type === 'doi') {
       actions.push({
         text: '📄 Créer Article (DOI)',
         onPress: () => handleConvertDoi(item),
       });
     }
     
-    if (item.detected_type === 'url') {
+    if (advancedMode && item.detected_type === 'url') {
       actions.push({
         text: '📄 Créer Article (URL)',
         onPress: () => handleConvertUrl(item),
@@ -375,7 +386,7 @@ export function InboxScreen({ navigation }: Props) {
       item.normalized || item.raw.slice(0, 100),
       actions
     );
-  }, [converting, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, handleLinkToEntity, handleRestore]);
+  }, [converting, advancedMode, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, handleLinkToEntity, handleRestore, handleArchive]);
 
   const renderItem = useCallback(({ item }: { item: InboxItem }) => {
     const isConverting = converting === item.id;
@@ -444,6 +455,12 @@ export function InboxScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Inbox</Text>
         <View style={styles.headerActions}>
+          <Pressable
+            style={[styles.advancedToggle, { backgroundColor: advancedMode ? colors.accent : colors.surface, borderColor: colors.borderHairline }]}
+            onPress={() => setAdvancedMode(prev => !prev)}
+          >
+            <Text style={[styles.advancedToggleText, { color: advancedMode ? '#000' : colors.textMuted }]}>Avancé</Text>
+          </Pressable>
           <GlobalSearchButton />
           <SettingsButton />
         </View>
@@ -494,7 +511,7 @@ export function InboxScreen({ navigation }: Props) {
             <TextInput
               ref={inputRef}
               style={[styles.input, { color: colors.text }]}
-              placeholder="PMID, DOI, URL, ou note..."
+              placeholder={advancedMode ? 'PMID, DOI, URL, ou note...' : 'Note rapide...'}
               placeholderTextColor={colors.textMuted}
               value={input}
               onChangeText={handleInputChange}
@@ -506,7 +523,7 @@ export function InboxScreen({ navigation }: Props) {
             />
             
             {/* Live detection indicator */}
-            {detectedType && (
+            {advancedMode && detectedType && (
               <View style={[styles.detectedBadge, { backgroundColor: getTypeColor(detectedType) }]}>
                 <Text style={styles.detectedBadgeText}>
                   {getTypeLabel(detectedType)}
@@ -638,6 +655,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  advancedToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  advancedToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   title: {
     ...typography.h1,

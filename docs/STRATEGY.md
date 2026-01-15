@@ -19,10 +19,10 @@ Base de connaissances pour la recherche en microbiologie sur **E. coli K-12** :
 
 | Entité | Source | Stockage | RLS |
 |--------|--------|----------|-----|
-| **Protéines** | APIs externes | Cache local + Supabase | Public read |
-| **Chercheurs** | Import manuel | Supabase | Public read |
-| **Articles** | Import manuel/PubMed/Crossref | Supabase | Public read |
-| **Conférences** | Import manuel | Supabase | Public read |
+| **Protéines** | APIs externes | Cache local + Supabase | N/A (cache local) |
+| **Chercheurs** | Import manuel | Supabase | Owner only |
+| **Articles** | Import manuel/PubMed/Crossref | Supabase | Owner only |
+| **Conférences** | Import manuel | Supabase | Owner only |
 | **Notes** | Utilisateur | Supabase (par user) | Owner only |
 | **Tags** | Utilisateur | Supabase (par user) | Owner only |
 | **Inbox** | Utilisateur | Supabase (par user) | Owner only |
@@ -134,9 +134,9 @@ Migrations dans `/supabase/migrations/`:
 - `007_collections.sql` - Collections + index unique déduplication
 
 Tables principales :
-- `researchers` - Chercheurs (public read)
-- `articles` - Publications avec UNIQUE(doi), UNIQUE(pmid), UNIQUE(external_source, external_id)
-- `conferences` - Conférences (public read)
+- `researchers` - Chercheurs (owner-only)
+- `articles` - Publications avec UNIQUE(doi), UNIQUE(pmid), UNIQUE(external_source, external_id) (owner-only)
+- `conferences` - Conférences (owner-only)
 - `tags` - Tags privés par user
 - `notes` - Notes par entité (privées par user)
 - `inbox_items` - Quick capture (privés par user)

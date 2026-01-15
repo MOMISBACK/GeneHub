@@ -2,6 +2,8 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 // Main tabs navigation
 export type MainTabsParamList = {
+  Notes: undefined;
+  Search: undefined;
   Genes: undefined;
   Researchers: undefined;
   Articles: undefined;
@@ -20,7 +22,6 @@ export type RootStackParamList = {
   ArticleDetail: { articleId: string };
   ConferenceDetail: { conferenceId: string };
   Tags: undefined;
-  Notes: undefined;
   Collections: undefined;
   CollectionDetail: { collectionId: string };
   Privacy: undefined;
@@ -29,5 +30,4 @@ export type RootStackParamList = {
   // Legacy - keep for backwards compatibility
   Home: undefined;
   Settings: undefined;
-  Search: undefined;
 };

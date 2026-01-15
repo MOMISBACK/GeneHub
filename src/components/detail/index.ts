@@ -4,3 +4,4 @@
 
 export { ViewModeToggle, type ViewMode } from './ViewModeToggle';
 export { NotesFullView } from './NotesFullView';
+export { NotesInlineSection } from './NotesInlineSection';
