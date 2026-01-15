@@ -11,8 +11,6 @@ import { ResearcherDetailScreen } from '../screens/ResearcherDetailScreen';
 import { ArticleDetailScreen } from '../screens/ArticleDetailScreen';
 import { ConferenceDetailScreen } from '../screens/ConferenceDetailScreen';
 import { TagsScreen } from '../screens/TagsScreen';
-import { NotesScreen } from '../screens/NotesScreen';
-import { SearchScreen } from '../screens/SearchScreen';
 import { CollectionsScreen } from '../screens/CollectionsScreen';
 import { CollectionDetailScreen } from '../screens/CollectionDetailScreen';
 import { PrivacyScreen } from '../screens/PrivacyScreen';
@@ -113,16 +111,6 @@ export function AppNavigator() {
             <Stack.Screen 
               name="Tags" 
               component={TagsScreen} 
-              options={{ headerShown: false }} 
-            />
-            <Stack.Screen 
-              name="Notes" 
-              component={NotesScreen} 
-              options={{ headerShown: false }} 
-            />
-            <Stack.Screen 
-              name="Search" 
-              component={SearchScreen} 
               options={{ headerShown: false }} 
             />
             <Stack.Screen 

@@ -120,11 +120,16 @@ export async function signInWithGoogle(): Promise<void> {
 
 export async function signOut(): Promise<void> {
   log('[auth] Signing out...');
-  
+
   try {
-    // Clear local storage first to ensure clean state
+    // Sign out from Supabase first (scope: global signs out all sessions)
+    const { error } = await supabaseWithAuth.auth.signOut({ scope: 'global' });
+    if (error) {
+      log('[auth] Supabase signOut error (non-blocking):', error.message);
+    }
+
+    // Clear local storage after sign-out
     if (Platform.OS === 'web') {
-      // On web, clear all Supabase-related storage
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -135,7 +140,6 @@ export async function signOut(): Promise<void> {
       keysToRemove.forEach(key => localStorage.removeItem(key));
       log('[auth] Cleared web localStorage');
     } else {
-      // On mobile, clear AsyncStorage Supabase keys
       const allKeys = await AsyncStorage.getAllKeys();
       const supabaseKeys = allKeys.filter(k => k.includes('supabase') || k.includes('sb-'));
       if (supabaseKeys.length > 0) {
@@ -143,26 +147,16 @@ export async function signOut(): Promise<void> {
         log('[auth] Cleared mobile AsyncStorage:', supabaseKeys.length, 'keys');
       }
     }
-    
-    // Sign out from Supabase (scope: global signs out all sessions)
-    const { error } = await supabaseWithAuth.auth.signOut({ scope: 'global' });
-    if (error) {
-      log('[auth] Supabase signOut error (non-blocking):', error.message);
-      // Don't throw - we've already cleared local storage
-    }
-    
+
     log('[auth] Signed out successfully');
-    
-    // On web, force reload to clear any cached state
+
     if (Platform.OS === 'web') {
-      // Small delay to ensure state is cleared
       setTimeout(() => {
         window.location.href = window.location.origin;
       }, 100);
     }
   } catch (e) {
     log('[auth] Error during sign out:', e);
-    // Force clear anyway on web
     if (Platform.OS === 'web') {
       localStorage.clear();
       window.location.href = window.location.origin;

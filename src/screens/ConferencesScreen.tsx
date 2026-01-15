@@ -26,7 +26,6 @@ import type { MainTabsParamList, RootStackParamList } from '../navigation/types'
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
-import { GlobalSearchButton } from '../components/header';
 import { listConferences, createConference } from '../lib/knowledge';
 import type { Conference, ConferenceInsert } from '../types/knowledge';
 
@@ -56,6 +55,7 @@ export function ConferencesScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,13 +101,20 @@ export function ConferencesScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Conférences</Text>
         <View style={styles.headerActions}>
-          <GlobalSearchButton />
           <Pressable
-            style={[styles.addBtn, { backgroundColor: colors.accent }]}
-            onPress={() => setShowAddModal(true)}
+            style={[styles.advancedToggle, { backgroundColor: advancedMode ? colors.accent : colors.surface, borderColor: colors.borderHairline }]}
+            onPress={() => setAdvancedMode(prev => !prev)}
           >
-            <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
+            <Text style={[styles.advancedToggleText, { color: advancedMode ? '#000' : colors.textMuted }]}>Avancé</Text>
           </Pressable>
+          {advancedMode && (
+            <Pressable
+              style={[styles.addBtn, { backgroundColor: colors.accent }]}
+              onPress={() => setShowAddModal(true)}
+            >
+              <Icon name="add" size={18} color={colors.buttonPrimaryText ?? '#fff'} />
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -145,7 +152,7 @@ export function ConferencesScreen({ navigation }: Props) {
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
             {searchQuery ? 'Aucun résultat' : 'Aucune conférence'}
           </Text>
-          {!searchQuery && (
+          {!searchQuery && advancedMode && (
             <Pressable
               style={[styles.addFirstBtn, { borderColor: colors.accent }]}
               onPress={() => setShowAddModal(true)}
@@ -354,6 +361,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  advancedToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  advancedToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   title: {
     ...typography.h1,

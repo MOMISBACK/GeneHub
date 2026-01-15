@@ -21,7 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
-import { Icon } from '../components/Icons';
 
 const STORAGE_KEYS = {
   interests: 'user_interests',
@@ -121,13 +120,6 @@ export function ProfileScreen() {
                 {profile.name || t.profile?.defaults?.name || 'User'}
               </Text>
             </View>
-            <Pressable
-              style={[styles.qrBtn, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
-              onPress={() => navigation.navigate('MyQr')}
-            >
-              <Icon name="qr" size={20} color={colors.accent} />
-              <Text style={[styles.qrBtnText, { color: colors.text }]}>Mon QR</Text>
-            </Pressable>
           </View>
           {(profile.title || profile.institution) && (
             <Text style={[styles.pageMeta, { color: colors.textMuted }]}> 

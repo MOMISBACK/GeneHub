@@ -127,9 +127,6 @@ export function ConferenceDetailScreen({ route, navigation }: Props) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
-        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Conférence</Text>
         <Pressable onPress={() => setShowEdit(true)} style={styles.editBtn}>
           <Icon name="pencil" size={16} color={colors.textMuted} />

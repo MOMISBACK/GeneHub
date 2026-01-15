@@ -1,6 +1,11 @@
 /**
- * GenesScreen - Unified Search + Favorites
- * Card-based minimal design inspired by mockups
+ * GenesScreen - Gene Cards with Notes Focus
+ * Card-based minimal design for manual gene note-taking
+ * 
+ * Features:
+ * - Create new gene cards manually (no auto-API fetch)
+ * - Quick access to add notes on existing genes
+ * - Tag-based interconnection system
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,22 +19,22 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Alert,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icons';
 import { TabIcon } from '../components/TabIcons';
+import { showConfirm } from '../lib/alert';
 
 import type { RootStackParamList, MainTabsParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
-import { getSavedGenes, removeSavedGene, SavedGene } from '../lib/cache';
+import { getSavedGenes, removeSavedGene, saveGene, SavedGene } from '../lib/cache';
 import { ORGANISMS } from '../data/organisms';
 import { normalizeOrganism } from '../lib/utils';
 import { useI18n } from '../i18n';
-import { GlobalSearchButton } from '../components/header';
 
 type Organism = { id: string; name: string; shortName: string };
 
@@ -47,6 +52,11 @@ export function GenesScreen({ navigation }: Props) {
   const [genes, setGenes] = useState<SavedGene[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal state for creating new gene
+  const [showNewGeneModal, setShowNewGeneModal] = useState(false);
+  const [newGeneSymbol, setNewGeneSymbol] = useState('');
+  const [newGeneProtein, setNewGeneProtein] = useState('');
 
   // For now: single-organism mode (E. coli) to avoid implying strong species-specific coverage.
   const selectedOrganism: Organism = ORGANISMS[0] as unknown as Organism;
@@ -72,18 +82,47 @@ export function GenesScreen({ navigation }: Props) {
     return unsubscribe;
   }, [loadGenes, navigation]);
 
-  const handleDelete = (gene: SavedGene) => {
-    Alert.alert('Supprimer ce gène ?', '', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          await removeSavedGene(gene.symbol, gene.organism);
-          loadGenes();
-        },
-      },
-    ]);
+  const handleDelete = async (gene: SavedGene) => {
+    const confirmed = await showConfirm(
+      'Supprimer ce gène ?',
+      '',
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      await removeSavedGene(gene.symbol, gene.organism);
+      loadGenes();
+    }
+  };
+
+  // Create a new gene card manually
+  const handleCreateGene = async () => {
+    const symbol = newGeneSymbol.trim();
+    if (!symbol) return;
+    
+    // Create minimal gene data for manual entry
+    const geneData = {
+      symbol: symbol,
+      organism: selectedOrganismName,
+      proteinName: newGeneProtein.trim() || undefined,
+      links: {},
+      sources: ['manual'],
+      fetchedAt: new Date().toISOString(),
+    };
+    
+    await saveGene(symbol, selectedOrganismName, geneData as any);
+    setShowNewGeneModal(false);
+    setNewGeneSymbol('');
+    setNewGeneProtein('');
+    loadGenes();
+    
+    // Navigate to the new gene detail to add notes
+    navigation.navigate('GeneDetail', { 
+      symbol: symbol, 
+      organism: selectedOrganismName,
+    });
   };
 
   const handleSearch = () => {
@@ -160,13 +199,21 @@ export function GenesScreen({ navigation }: Props) {
           <Text style={[styles.headerTitle, { color: colors.text }]}>Gènes</Text>
           <View style={styles.headerActions}>
             <Pressable
+              onPress={() => setShowNewGeneModal(true)}
+              style={[styles.newGeneBtn, { backgroundColor: colors.accent }]}
+              hitSlop={8}
+            >
+              <Icon name="add" size={18} color="#000" />
+              <Text style={styles.newGeneBtnText}>Nouveau</Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigation.navigate('Collections')}
               style={styles.iconButton}
               hitSlop={8}
             >
               <TabIcon name="Collections" size={20} color={colors.textMuted} />
             </Pressable>
-            <GlobalSearchButton />
+                {/* <GlobalSearchButton /> */}
           </View>
         </View>
       </View>
@@ -223,19 +270,93 @@ export function GenesScreen({ navigation }: Props) {
                 {hasSearch && hasFavorites ? t.errors.notFound : t.savedGenes.empty}
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                {hasSearch && hasFavorites ? t.search.genePlaceholder : t.savedGenes.emptyHint}
+                {hasSearch && hasFavorites ? t.search.genePlaceholder : 'Créez une fiche gène pour commencer à prendre des notes'}
               </Text>
-              {searchQuery.trim() && (
-                <Pressable style={[styles.searchBtn, { backgroundColor: colors.buttonPrimary }]} onPress={handleSearch}>
-                  <Text style={[styles.searchBtnText, { color: colors.buttonPrimaryText }]}>
-                    {t.search.searchButton} "{searchQuery}"
-                  </Text>
-                </Pressable>
-              )}
+              <Pressable 
+                style={[styles.searchBtn, { backgroundColor: colors.buttonPrimary }]} 
+                onPress={() => setShowNewGeneModal(true)}
+              >
+                <Text style={[styles.searchBtnText, { color: colors.buttonPrimaryText }]}>
+                  + Créer une fiche gène
+                </Text>
+              </Pressable>
             </View>
           )
         }
       />
+
+      {/* New Gene Modal */}
+      <Modal
+        visible={showNewGeneModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNewGeneModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowNewGeneModal(false)}
+        >
+          <Pressable 
+            style={[styles.modalContent, { backgroundColor: colors.card }]}
+            onPress={e => e.stopPropagation()}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Nouvelle fiche gène</Text>
+            
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Symbole du gène *</Text>
+            <TextInput
+              style={[styles.modalInput, { 
+                backgroundColor: colors.surface, 
+                borderColor: colors.border,
+                color: colors.text 
+              }]}
+              value={newGeneSymbol}
+              onChangeText={setNewGeneSymbol}
+              placeholder="ex: dnaA, lacZ, rpoB..."
+              placeholderTextColor={colors.inputPlaceholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
+            
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Nom de la protéine (optionnel)</Text>
+            <TextInput
+              style={[styles.modalInput, { 
+                backgroundColor: colors.surface, 
+                borderColor: colors.border,
+                color: colors.text 
+              }]}
+              value={newGeneProtein}
+              onChangeText={setNewGeneProtein}
+              placeholder="ex: Chromosomal replication initiator protein DnaA"
+              placeholderTextColor={colors.inputPlaceholder}
+              autoCapitalize="sentences"
+            />
+            
+            <Text style={[styles.organismInfo, { color: colors.textMuted }]}>
+              Organisme: <Text style={{ fontStyle: 'italic' }}>{selectedOrganism.name}</Text>
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <Pressable 
+                style={[styles.modalBtn, { borderColor: colors.border }]}
+                onPress={() => setShowNewGeneModal(false)}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>Annuler</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.modalBtn, styles.modalBtnPrimary, { 
+                  backgroundColor: colors.accent,
+                  opacity: newGeneSymbol.trim() ? 1 : 0.5
+                }]}
+                onPress={handleCreateGene}
+                disabled={!newGeneSymbol.trim()}
+              >
+                <Text style={[styles.modalBtnText, { color: '#000' }]}>Créer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -297,4 +418,71 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, textAlign: 'center', marginBottom: spacing.lg },
   searchBtn: { paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: radius.md },
   searchBtnText: { fontSize: 15, fontWeight: '600' },
+  
+  // New gene button
+  newGeneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  newGeneBtnText: { fontSize: 13, fontWeight: '600', color: '#000' },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: spacing.lg,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: spacing.xs,
+  },
+  modalInput: {
+    height: 44,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    fontSize: 15,
+    marginBottom: spacing.md,
+  },
+  organismInfo: {
+    fontSize: 13,
+    marginBottom: spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modalBtnPrimary: {
+    borderWidth: 0,
+  },
+  modalBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

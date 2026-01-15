@@ -5,13 +5,14 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MainTabsParamList, RootStackParamList } from '../navigation/types';
 import { useTheme, ThemeMode, typography, spacing, radius } from '../theme';
 import { useI18n, LANGUAGES, LanguageCode } from '../i18n';
 import { signOut } from '../lib/auth';
+import { showConfirm, showError } from '../lib/alert';
 import { Icon } from '../components/Icons';
 import { TabIcon } from '../components/TabIcons';
 
@@ -28,24 +29,21 @@ export function SettingsScreen({ navigation }: Props) {
   const colors = theme.colors;
 
   const handleLogout = async () => {
-    Alert.alert(
+    const confirmed = await showConfirm(
       t.common.logout,
       '',
-      [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.common.logout,
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (e: any) {
-              Alert.alert(t.common.error, e?.message ?? String(e));
-            }
-          },
-        },
-      ]
+      t.common.logout,
+      t.common.cancel,
+      true // destructive
     );
+    
+    if (confirmed) {
+      try {
+        await signOut();
+      } catch (e: any) {
+        showError(t.common.error, e?.message ?? String(e));
+      }
+    }
   };
 
   const themeModes: { key: ThemeMode; label: string }[] = [
@@ -126,20 +124,6 @@ export function SettingsScreen({ navigation }: Props) {
             <Text style={[styles.optionText, { color: colors.text }]}>GeneHub Bacteria</Text>
           </View>
         </View>
-
-        {/* Collections Card */}
-        <Pressable
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
-          onPress={() => navigation.navigate('Collections')}
-        >
-          <View style={styles.navRow}>
-            <View style={styles.navLeft}>
-              <TabIcon name="Collections" size={20} color={colors.textMuted} />
-              <Text style={[styles.optionText, { color: colors.text }]}>Collections</Text>
-            </View>
-            <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
-          </View>
-        </Pressable>
 
         {/* Privacy Card */}
         <Pressable

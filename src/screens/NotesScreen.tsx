@@ -2,6 +2,8 @@
  * NotesScreen - All notes across all entities
  */
 
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -18,14 +20,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { RootStackParamList } from '../navigation/types';
+import type { RootStackParamList, MainTabsParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
-import { listAllNotes, getNotesCountByEntityType } from '../lib/knowledge/notes.service';
+import { listAllNotes, getNotesCountByEntityType, createNoteForEntity } from '../lib/knowledge/notes.service';
+import { addTagToNote } from '../lib/knowledge/tags.service';
 import type { EntityNote, EntityType } from '../types/knowledge';
+import type { Tag } from '../types/knowledge';
+import { TagSelectorInline } from '../components/inbox/TagSelectorInline';
+import { showAlert, showSuccess } from '../lib/alert';
+import { TagCreateModal } from '../components/tags/TagCreateModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Notes'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabsParamList, 'Notes'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 // Entity type display config
 const ENTITY_CONFIG: Record<EntityType, { label: string; icon: string; color: string }> = {
@@ -46,6 +56,11 @@ export function NotesScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<EntityType | 'all'>('all');
+  const [quickText, setQuickText] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [tagRefreshKey, setTagRefreshKey] = useState(0);
   const [counts, setCounts] = useState<Record<EntityType, number>>({
     gene: 0,
     researcher: 0,
@@ -78,6 +93,45 @@ export function NotesScreen({ navigation }: Props) {
     const unsub = navigation.addListener('focus', load);
     return unsub;
   }, [load, navigation]);
+
+  const handleQuickAdd = useCallback(async () => {
+    const trimmed = quickText.trim();
+    if (!trimmed) return;
+
+    const entityLinkedTags = selectedTags.filter(t => t.entity_type && t.entity_id);
+    if (entityLinkedTags.length === 0) {
+      showAlert('Ajoutez un tag lié', 'Sélectionnez au moins un tag lié à une fiche.');
+      return;
+    }
+
+    setAdding(true);
+    try {
+      let createdCount = 0;
+
+      for (const tag of entityLinkedTags) {
+        const note = await createNoteForEntity(
+          tag.entity_type as EntityType,
+          tag.entity_id as string,
+          trimmed
+        );
+
+        for (const t of selectedTags) {
+          await addTagToNote(note.id, t.id);
+        }
+
+        createdCount++;
+      }
+
+      if (createdCount > 0) {
+        showSuccess('Note créée', `Ajoutée à ${createdCount} fiche(s).`);
+        setQuickText('');
+        setSelectedTags([]);
+        load();
+      }
+    } finally {
+      setAdding(false);
+    }
+  }, [quickText, selectedTags, load]);
 
   // Filter and search
   const filteredNotes = notes.filter(note => {
@@ -190,14 +244,49 @@ export function NotesScreen({ navigation }: Props) {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.headerTop}>
-          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-            <Icon name="back" size={20} color={colors.text} />
-          </Pressable>
           <Text style={[styles.title, { color: colors.text }]}>Mes Notes</Text>
           <View style={styles.headerBadge}>
             <Text style={[styles.headerBadgeText, { color: colors.accent }]}>
               {totalCount}
             </Text>
+          </View>
+        </View>
+
+        {/* Quick capture */}
+        <View style={[styles.quickCapture, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
+        >
+          <TextInput
+            style={[styles.quickInput, { color: colors.text }]}
+            placeholder="Capture rapide…"
+            placeholderTextColor={colors.textMuted}
+            value={quickText}
+            onChangeText={setQuickText}
+            multiline
+          />
+          <View style={styles.quickActions}>
+            <TagSelectorInline
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              refreshKey={tagRefreshKey}
+            />
+            <Pressable
+              style={[styles.quickTagBtn, { backgroundColor: colors.bg, borderColor: colors.borderHairline }]}
+              onPress={() => setShowTagModal(true)}
+            >
+              <Icon name="tag" size={14} color={colors.textMuted} />
+              <Text style={[styles.quickTagText, { color: colors.textMuted }]}>Nouveau tag</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.quickAddBtn, { backgroundColor: quickText.trim() ? colors.accent : colors.bg }]}
+              onPress={handleQuickAdd}
+              disabled={!quickText.trim() || adding}
+            >
+              {adding ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Text style={[styles.quickAddText, { color: quickText.trim() ? '#000' : colors.textMuted }]}>Ajouter</Text>
+              )}
+            </Pressable>
           </View>
         </View>
         
@@ -256,6 +345,19 @@ export function NotesScreen({ navigation }: Props) {
           ))}
         </View>
       </View>
+
+      <TagCreateModal
+        visible={showTagModal}
+        onClose={() => setShowTagModal(false)}
+        onCreated={(tag) => {
+          setSelectedTags((prev) => {
+            if (prev.some(t => t.id === tag.id)) return prev;
+            return [...prev, tag];
+          });
+          setTagRefreshKey((prev) => prev + 1);
+          setShowTagModal(false);
+        }}
+      />
 
       {/* Content */}
       {loading && notes.length === 0 ? (
@@ -322,6 +424,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     marginBottom: spacing.md,
+  },
+  quickCapture: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: spacing.md,
+  },
+  quickInput: {
+    ...typography.body,
+    minHeight: 56,
+    textAlignVertical: 'top',
+  },
+  quickActions: {
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  quickTagBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  quickTagText: {
+    ...typography.caption,
+  },
+  quickAddBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  quickAddText: {
+    ...typography.body,
+    fontWeight: '600',
   },
   title: {
     ...typography.h1,

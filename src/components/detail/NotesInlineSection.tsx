@@ -1,6 +1,6 @@
 /**
- * NotesFullView - Full screen notes view for detail screens
- * Displays all notes in a scrollable list with creation capabilities
+ * NotesInlineSection - Inline notes display for unified detail screens
+ * Shows notes directly in a ScrollView without separate navigation
  */
 
 import { useState, useCallback } from 'react';
@@ -9,7 +9,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
@@ -39,7 +38,7 @@ interface Props {
   loading?: boolean;
 }
 
-export function NotesFullView({ entityType, entityId, entityName, notes, onRefresh, loading }: Props) {
+export function NotesInlineSection({ entityType, entityId, entityName, notes, onRefresh, loading }: Props) {
   const { theme } = useTheme();
   const colors = theme.colors;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -50,7 +49,7 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
   const [saving, setSaving] = useState(false);
   const [showTagModal, setShowTagModal] = useState<string | null>(null);
 
-  // Format tag display name - tags are already properly formatted
+  // Format tag display name
   const getTagDisplayName = (tag: Tag): string => {
     return tag.name;
   };
@@ -190,12 +189,15 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
     }
   };
 
-  const renderNote = ({ item: note }: { item: EntityNote }) => (
-    <View style={[
-      styles.noteCard, 
-      { backgroundColor: colors.surface, borderColor: colors.borderHairline },
-      note.isLinkedViaTag && [styles.linkedNote, { borderLeftColor: note.linkingTag?.color || colors.accent }]
-    ]}>
+  const renderNote = (note: EntityNote) => (
+    <View 
+      key={note.id}
+      style={[
+        styles.noteCard, 
+        { backgroundColor: colors.surface, borderColor: colors.borderHairline },
+        note.isLinkedViaTag && [styles.linkedNote, { borderLeftColor: note.linkingTag?.color || colors.accent }]
+      ]}
+    >
       {/* Indicateur pour les notes liées via tag - affiche le tag de liaison */}
       {note.isLinkedViaTag && note.linkingTag && (
         <Pressable 
@@ -271,7 +273,7 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
               </Pressable>
             ))}
             
-            {/* Add tag button - opens modal directly */}
+            {/* Add tag button */}
             <Pressable
               style={[styles.addTagBtn, { borderColor: colors.borderHairline }]}
               onPress={() => setShowTagModal(note.id)}
@@ -308,6 +310,15 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
         onCreated={handleTagCreated}
       />
 
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <Icon name="notes" size={16} color={colors.text} />
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text>
+        <Text style={[styles.noteCount, { color: colors.textMuted }]}>
+          {notes.length}
+        </Text>
+      </View>
+
       {/* Add note input */}
       <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}>
         <TextInput
@@ -338,22 +349,14 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
       {/* Notes list */}
       {notes.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Icon name="notes" size={48} color={colors.textMuted} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Aucune note
-          </Text>
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-            Commencez à prendre des notes sur {entityName}
+            Aucune note pour le moment
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={notes}
-          keyExtractor={(note) => note.id}
-          renderItem={renderNote}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        <View style={styles.notesList}>
+          {notes.map(renderNote)}
+        </View>
       )}
     </View>
   );
@@ -361,86 +364,57 @@ export function NotesFullView({ entityType, entityId, entityName, notes, onRefre
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    marginTop: spacing.lg,
   },
-  header: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+    gap: spacing.sm,
     marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  headerTitle: {
+  sectionTitle: {
     ...typography.body,
     fontWeight: '600',
   },
-  headerSubtitle: {
+  noteCount: {
     ...typography.caption,
-    marginTop: 2,
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    alignItems: 'flex-start',
     padding: spacing.sm,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    minHeight: 80,
+    minHeight: 60,
+    marginBottom: spacing.md,
   },
   input: {
     flex: 1,
     ...typography.body,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    minHeight: 60,
+    minHeight: 40,
     textAlignVertical: 'top',
   },
   addNoteBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 120,
+  notesList: {
+    gap: spacing.sm,
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: spacing.xl,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: 60,
-  },
-  emptyTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    marginTop: spacing.md,
   },
   emptyText: {
     ...typography.bodySmall,
-    textAlign: 'center',
-    marginTop: spacing.xs,
   },
   noteCard: {
     padding: spacing.md,
-    marginBottom: spacing.md,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
   },
@@ -537,7 +511,7 @@ const styles = StyleSheet.create({
   },
   linkedBadgeText: {
     ...typography.caption,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
   },
 });

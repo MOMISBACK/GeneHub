@@ -121,9 +121,6 @@ export function ArticleDetailScreen({ route, navigation }: Props) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
-        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Article</Text>
         <View style={styles.headerActions}>
           <AddToCollectionButton entityType="article" entityId={articleId} displayName={article?.title} />

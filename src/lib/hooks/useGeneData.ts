@@ -6,14 +6,24 @@
  * - Loading BioCyc data
  * - Refreshing data
  * - Save/unsave functionality
+ * 
+ * NOTE: API calls (NCBI, UniProt, EcoCyc/BioCyc) are currently DISABLED.
+ * The app focuses on manual note-taking and tagging.
+ * Set ENABLE_API_FETCH = true to re-enable automatic gene summaries.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 
 import { getGeneSummary, getBiocycData, type GeneSummary, type BiocycGeneData } from '../api';
-import { getCachedGene, setCachedGene, saveGene, removeSavedGene, isGeneSaved } from '../cache';
+import { getCachedGene, setCachedGene, saveGene, removeSavedGene, isGeneSaved, getSavedGenes } from '../cache';
 import { logGeneView } from '../db';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE FLAG: Enable/disable automatic API fetching for gene summaries
+// Set to true to re-enable NCBI, UniProt, EcoCyc data fetching
+// ═══════════════════════════════════════════════════════════════════════════════
+const ENABLE_API_FETCH = false;
 
 export type UseGeneDataResult = {
   // State
@@ -45,8 +55,9 @@ export function useGeneData(
     setIsSaved(saved);
   }, [symbol, organism]);
 
-  // Load BioCyc data
+  // Load BioCyc data (DISABLED when ENABLE_API_FETCH is false)
   const loadBiocycData = useCallback(async () => {
+    if (!ENABLE_API_FETCH) return; // Skip BioCyc when API disabled
     try {
       const response = await getBiocycData(symbol, organism);
       if (response.success && response.data) {
@@ -57,8 +68,9 @@ export function useGeneData(
     }
   }, [symbol, organism]);
 
-  // Refresh data from API
+  // Refresh data from API (DISABLED when ENABLE_API_FETCH is false)
   const refresh = useCallback(async () => {
+    if (!ENABLE_API_FETCH) return; // Skip refresh when API disabled
     try {
       const result = await getGeneSummary(symbol, organism);
       setData(result);
@@ -69,6 +81,7 @@ export function useGeneData(
   }, [symbol, organism]);
 
   // Load initial data
+  // When ENABLE_API_FETCH is false, only loads from saved genes/cache
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -79,19 +92,62 @@ export function useGeneData(
       if (cached) {
         setData(cached);
         setLoading(false);
-        // Background refresh
-        refresh();
-        loadBiocycData();
+        if (ENABLE_API_FETCH) {
+          // Background refresh only when API is enabled
+          refresh();
+          loadBiocycData();
+        }
         return;
       }
 
-      // Fetch from API
+      // Check if gene is in saved genes
+      const savedGenes = await getSavedGenes();
+      const normSymbol = symbol.toLowerCase().trim();
+      const normOrganism = organism.toLowerCase().trim();
+      const savedGene = savedGenes.find(
+        g => g.symbol.toLowerCase().trim() === normSymbol && 
+             g.organism.toLowerCase().trim() === normOrganism
+      );
+      
+      if (savedGene?.data) {
+        setData(savedGene.data);
+        setLoading(false);
+        return;
+      }
+
+      // When API is disabled, create a minimal gene object for new genes
+      if (!ENABLE_API_FETCH) {
+        const minimalGeneData: GeneSummary = {
+          symbol: symbol,
+          organism: organism,
+          links: {},
+          sources: [],
+          fetchedAt: new Date().toISOString(),
+        };
+        setData(minimalGeneData);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch from API (only when ENABLE_API_FETCH is true)
       const result = await getGeneSummary(symbol, organism);
       setData(result);
       await setCachedGene(symbol, organism, result);
       loadBiocycData();
     } catch (e: any) {
-      setError(e?.message ?? t.errors.unknown);
+      // When API is disabled and we have an error, still show minimal data
+      if (!ENABLE_API_FETCH) {
+        const minimalGeneData: GeneSummary = {
+          symbol: symbol,
+          organism: organism,
+          links: {},
+          sources: [],
+          fetchedAt: new Date().toISOString(),
+        };
+        setData(minimalGeneData);
+      } else {
+        setError(e?.message ?? t.errors.unknown);
+      }
     } finally {
       setLoading(false);
     }

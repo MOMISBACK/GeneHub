@@ -22,9 +22,10 @@ interface Props {
   selectedTags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
   maxTags?: number;
+  refreshKey?: number;
 }
 
-export function TagSelectorInline({ selectedTags, onTagsChange, maxTags = 5 }: Props) {
+export function TagSelectorInline({ selectedTags, onTagsChange, maxTags = 5, refreshKey }: Props) {
   const { theme } = useTheme();
   const colors = theme.colors;
 
@@ -52,7 +53,7 @@ export function TagSelectorInline({ selectedTags, onTagsChange, maxTags = 5 }: P
       }
     };
     loadTags();
-  }, []);
+  }, [refreshKey]);
 
   const toggleTag = useCallback((tag: Tag) => {
     const isSelected = selectedTags.some(t => t.id === tag.id);

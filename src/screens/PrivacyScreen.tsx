@@ -9,7 +9,6 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Share,
@@ -25,6 +24,7 @@ import {
   exportToJson,
 } from '../lib/export';
 import { supabaseWithAuth } from '../lib/supabase';
+import { showConfirm, showAlert, showError } from '../lib/alert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Privacy'>;
 
@@ -94,40 +94,34 @@ export function PrivacyScreen({ navigation }: Props) {
         title: filename,
       });
     } catch (error: any) {
-      Alert.alert('Erreur export', error.message);
+      showError('Erreur export', error.message);
     } finally {
       setExporting(null);
     }
   };
 
-  const handleDeleteAllData = () => {
-    Alert.alert(
+  const handleDeleteAllData = async () => {
+    const confirmed = await showConfirm(
       '⚠️ Supprimer toutes mes données',
       'Cette action supprimera définitivement :\n\n• Toutes vos notes\n• Tous vos tags\n• Tout votre inbox\n• Toutes vos collections\n\nCette action est IRRÉVERSIBLE.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer tout',
-          style: 'destructive',
-          onPress: () => confirmDelete(),
-        },
-      ]
+      'Supprimer tout',
+      'Annuler',
+      true
     );
-  };
-
-  const confirmDelete = () => {
-    Alert.alert(
-      'Confirmation finale',
-      'Êtes-vous vraiment sûr ? Tapez "SUPPRIMER" mentalement et confirmez.',
-      [
-        { text: 'Non, annuler', style: 'cancel' },
-        {
-          text: 'Oui, tout supprimer',
-          style: 'destructive',
-          onPress: executeDelete,
-        },
-      ]
-    );
+    
+    if (confirmed) {
+      const finalConfirm = await showConfirm(
+        'Confirmation finale',
+        'Êtes-vous vraiment sûr ? Cette action est définitive.',
+        'Oui, tout supprimer',
+        'Non, annuler',
+        true
+      );
+      
+      if (finalConfirm) {
+        await executeDelete();
+      }
+    }
   };
 
   const executeDelete = async () => {
@@ -159,28 +153,19 @@ export function PrivacyScreen({ navigation }: Props) {
         }
       }
 
-      Alert.alert(
-        'Données supprimées',
-        'Toutes vos données personnelles ont été supprimées.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      showAlert('Données supprimées', 'Toutes vos données personnelles ont été supprimées.');
+      navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      showError('Erreur', error.message);
     } finally {
       setDeleting(false);
     }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
       '⚠️ Supprimer mon compte',
-      'Pour supprimer votre compte, veuillez nous contacter à support@genehub.app avec votre email de connexion.',
-      [{ text: 'OK' }]
+      'Pour supprimer votre compte, veuillez nous contacter à support@genehub.app avec votre email de connexion.'
     );
   };
 

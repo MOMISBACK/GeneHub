@@ -3,7 +3,7 @@
  * Permet de lier chercheurs, articles, conférences, gènes
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 import { useTheme, typography, spacing, radius } from '../../theme';
@@ -47,6 +49,10 @@ export function RelationPicker({ visible, onClose, entityType, onSelect, exclude
   const [geneSymbol, setGeneSymbol] = useState('');
   const [geneOrganism, setGeneOrganism] = useState('Escherichia coli');
 
+  // Store excludeIds in ref to avoid dependency issues
+  const excludeIdsRef = useRef(excludeIds);
+  excludeIdsRef.current = excludeIds;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,14 +71,14 @@ export function RelationPicker({ visible, onClose, entityType, onSelect, exclude
           // Gene is manual input, no list
           break;
       }
-      setItems(data.filter((d) => !excludeIds.includes(d.id)));
+      setItems(data.filter((d) => !excludeIdsRef.current.includes(d.id)));
     } catch (e) {
       console.error('Error loading items:', e);
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [entityType, excludeIds]);
+  }, [entityType]);
 
   useEffect(() => {
     if (visible) {
@@ -111,7 +117,7 @@ export function RelationPicker({ visible, onClose, entityType, onSelect, exclude
       case 'researcher': return 'Ajouter un chercheur';
       case 'article': return 'Ajouter un article';
       case 'conference': return 'Ajouter une conférence';
-      case 'gene': return 'Ajouter une protéine';
+      case 'gene': return 'Ajouter un gène';
     }
   };
 
@@ -152,7 +158,10 @@ export function RelationPicker({ visible, onClose, entityType, onSelect, exclude
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
           {/* Header */}
           <View style={[styles.header, { borderColor: colors.borderHairline }]}>
@@ -234,7 +243,7 @@ export function RelationPicker({ visible, onClose, entityType, onSelect, exclude
             </>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

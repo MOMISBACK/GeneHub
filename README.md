@@ -1,6 +1,9 @@
 # GeneHub Bacteria 🧬
 
-Application mobile React Native / Expo pour explorer les gènes bactériens avec des données de UniProt, NCBI, BioCyc et plus.
+Application mobile React Native / Expo pour gérer vos notes de recherche sur les gènes bactériens et interconnecter vos connaissances via un système de tags.
+
+> **Mode actuel**: Focus sur la prise de notes et l'interconnexion via tags.  
+> Les appels API automatiques (UniProt, NCBI, BioCyc) sont désactivés mais peuvent être réactivés.
 
 ## 🚀 Stack Technique
 

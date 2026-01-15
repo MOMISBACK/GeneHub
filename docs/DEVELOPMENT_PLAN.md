@@ -288,7 +288,7 @@ Solution temporaire: Écrans `MyQrScreen` et `ScanQrScreen` remplacés par place
 - [x] Unique constraint `(user_id, name)` sur tags
 
 ### Décision d'Architecture
-- **Articles, Researchers, Conferences** = Données partagées (tous auth)
+- **Articles, Researchers, Conferences** = Données privées (owner-only)
 - **Tags, Notes, Inbox** = Données privées (owner-only)
 
 ### Tests RLS (22 tests)

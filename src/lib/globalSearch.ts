@@ -3,7 +3,7 @@
  * Unified search across genes (saved + local list) and knowledge base (Supabase)
  */
 
-import { searchAll as searchKB, type SearchResult as KBSearchResult } from './knowledge';
+import { searchWithFilters as searchKB, type SearchResult as KBSearchResult } from './knowledge';
 import { geneDataLayer } from './dataLayer';
 import { getSavedGenes, type SavedGene } from './cache';
 import type { GeneSummary } from './api';
@@ -207,10 +207,9 @@ export async function globalSearch(
   const kbTypes = types.filter(t => t !== 'gene') as ('researcher' | 'article' | 'conference')[];
   if (kbTypes.length > 0) {
     promises.push(
-      searchKB(query)
+      searchKB(query, { types: kbTypes, limit })
         .then(kbResults => {
-          const filtered = kbResults.filter(r => kbTypes.includes(r.type));
-          results.push(...filtered.slice(0, limit));
+          results.push(...kbResults);
         })
         .catch(console.error)
     );

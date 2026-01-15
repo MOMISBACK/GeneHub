@@ -162,6 +162,39 @@ export function InboxIcon({ size = 24, color = '#000' }: TabIconProps) {
 }
 
 /**
+ * Notes Icon - Simple note sheet
+ */
+export function NotesIcon({ size = 24, color = '#000' }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 3H14L18 7V21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3Z"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path d="M14 3V7H18" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Path d="M8 11H16" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Path d="M8 15H16" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/**
+ * Search Icon - Magnifier
+ */
+export function SearchIcon({ size = 24, color = '#000' }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="11" cy="11" r="6" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M16 16L20 20" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/**
  * Collections Icon - Folder for Collections
  */
 export function CollectionsIcon({ size = 24, color = '#000' }: TabIconProps) {
@@ -221,6 +254,8 @@ export function PrivacyIcon({ size = 24, color = '#000' }: TabIconProps) {
  * Map of tab names to icon components
  */
 export const TabIconMap = {
+  Notes: NotesIcon,
+  Search: SearchIcon,
   Genes: DnaIcon,
   Researchers: PeopleIcon,
   Articles: ArticleIcon,

@@ -23,33 +23,39 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
 
   // Search researchers
-  const { data: researchers } = await supabaseWithAuth
+  const { data: researchers, error: researchersError } = await supabaseWithAuth
     .from('researchers')
     .select('*')
     .or(`name.ilike.${searchTerm},institution.ilike.${searchTerm},specialization.ilike.${searchTerm}`)
     .limit(20);
+
+  if (researchersError) throw wrapError('recherche chercheurs', researchersError);
 
   if (researchers) {
     results.push(...researchers.map((r) => ({ type: 'researcher' as const, data: r })));
   }
 
   // Search articles
-  const { data: articles } = await supabaseWithAuth
+  const { data: articles, error: articlesError } = await supabaseWithAuth
     .from('articles')
     .select('*')
     .or(`title.ilike.${searchTerm},journal.ilike.${searchTerm},abstract.ilike.${searchTerm}`)
     .limit(20);
+
+  if (articlesError) throw wrapError('recherche articles', articlesError);
 
   if (articles) {
     results.push(...articles.map((a) => ({ type: 'article' as const, data: a })));
   }
 
   // Search conferences
-  const { data: conferences } = await supabaseWithAuth
+  const { data: conferences, error: conferencesError } = await supabaseWithAuth
     .from('conferences')
     .select('*')
     .or(`name.ilike.${searchTerm},city.ilike.${searchTerm},description.ilike.${searchTerm}`)
     .limit(20);
+
+  if (conferencesError) throw wrapError('recherche conférences', conferencesError);
 
   if (conferences) {
     results.push(...conferences.map((c) => ({ type: 'conference' as const, data: c })));

@@ -1,14 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GeneSummary } from './api';
+import { cachedStorage, storage } from './storage';
 
-const CACHE_PREFIX = 'gene_cache_';
 const FAVORITES_KEY = 'saved_genes';
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-type CachedGene = {
-  data: GeneSummary;
-  cachedAt: number;
-};
 
 export type SavedGene = {
   id: string;
@@ -39,24 +34,13 @@ function normalizeOrganism(organism: string): string {
 // ============ Cache Functions ============
 
 function getCacheKey(symbol: string, organism: string): string {
-  return `${CACHE_PREFIX}${normalizeSymbol(symbol)}_${normalizeOrganism(organism)}`
+  return `genes:${normalizeSymbol(symbol)}:${normalizeOrganism(organism)}`;
 }
 
 export async function getCachedGene(symbol: string, organism: string): Promise<GeneSummary | null> {
   try {
     const key = getCacheKey(symbol, organism);
-    const cached = await AsyncStorage.getItem(key);
-    if (!cached) return null;
-
-    const { data, cachedAt }: CachedGene = JSON.parse(cached);
-    
-    // Check if cache is still valid
-    if (Date.now() - cachedAt > CACHE_DURATION_MS) {
-      await AsyncStorage.removeItem(key);
-      return null;
-    }
-
-    return data;
+    return await cachedStorage.get<GeneSummary>(key);
   } catch {
     return null;
   }
@@ -65,11 +49,7 @@ export async function getCachedGene(symbol: string, organism: string): Promise<G
 export async function setCachedGene(symbol: string, organism: string, data: GeneSummary): Promise<void> {
   try {
     const key = getCacheKey(symbol, organism);
-    const cached: CachedGene = {
-      data,
-      cachedAt: Date.now(),
-    };
-    await AsyncStorage.setItem(key, JSON.stringify(cached));
+    await cachedStorage.set(key, data, CACHE_DURATION_MS);
   } catch {
     // Ignore cache errors
   }
@@ -143,9 +123,13 @@ export async function isGeneSaved(symbol: string, organism: string): Promise<boo
 
 export async function clearAllCache(): Promise<void> {
   try {
-    const keys = await AsyncStorage.getAllKeys();
-    const cacheKeys = keys.filter((k) => k.startsWith(CACHE_PREFIX));
-    await AsyncStorage.multiRemove(cacheKeys);
+    const keys = await storage.getAllKeys();
+    const legacyKeys = keys.filter((k) => k.startsWith('gene_cache_'));
+    const newKeys = keys.filter((k) => k.startsWith('genes:'));
+    const allKeys = [...legacyKeys, ...newKeys];
+    if (allKeys.length > 0) {
+      await storage.multiRemove(allKeys);
+    }
   } catch {
     // Ignore
   }

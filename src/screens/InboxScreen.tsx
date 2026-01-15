@@ -18,7 +18,6 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
@@ -31,6 +30,7 @@ import { useTheme, typography, spacing, radius } from '../theme';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icons';
 import { GlobalSearchButton, SettingsButton } from '../components/header';
+import { showAlert, showConfirm, showError, showSuccess } from '../lib/alert';
 import { useInbox } from '../lib/hooks';
 import { 
   getTypeLabel, 
@@ -82,6 +82,7 @@ export function InboxScreen({ navigation }: Props) {
 
   // Tags for auto-linking
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   // Live detection as user types
   const handleInputChange = useCallback((text: string) => {
@@ -126,11 +127,7 @@ export function InboxScreen({ navigation }: Props) {
         }
 
         if (successCount > 0) {
-          Alert.alert(
-            'Notes créées ✓',
-            `Note ajoutée à ${entityNames.join(', ')}`,
-            [{ text: 'OK' }]
-          );
+          showSuccess('Notes créées', `Note ajoutée à ${entityNames.join(', ')}`);
         }
 
         setInput('');
@@ -157,17 +154,12 @@ export function InboxScreen({ navigation }: Props) {
     try {
       const result = await convertPmidToArticle(item.id);
       if (result.success) {
-        Alert.alert(
-          'Article importé ✓',
-          result.title || 'Article créé avec succès',
-          [
-            { text: 'Voir', onPress: () => navigation.navigate('ArticleDetail', { articleId: result.entityId }) },
-            { text: 'OK' },
-          ]
-        );
+        showSuccess('Article importé', result.title || 'Article créé avec succès');
+        // Auto-navigate to article
+        navigation.navigate('ArticleDetail', { articleId: result.entityId });
         refresh();
       } else {
-        Alert.alert('Erreur', result.error || 'Import échoué');
+        showError('Erreur', result.error || 'Import échoué');
       }
     } finally {
       setConverting(null);
@@ -180,17 +172,11 @@ export function InboxScreen({ navigation }: Props) {
     try {
       const result = await convertDoiToArticle(item.id);
       if (result.success) {
-        Alert.alert(
-          'Article créé ✓',
-          'Article créé avec DOI. Vous pouvez compléter les détails.',
-          [
-            { text: 'Voir', onPress: () => navigation.navigate('ArticleDetail', { articleId: result.entityId }) },
-            { text: 'OK' },
-          ]
-        );
+        showSuccess('Article créé', 'Article créé avec DOI.');
+        navigation.navigate('ArticleDetail', { articleId: result.entityId });
         refresh();
       } else {
-        Alert.alert('Erreur', result.error || 'Création échouée');
+        showError('Erreur', result.error || 'Création échouée');
       }
     } finally {
       setConverting(null);
@@ -203,17 +189,11 @@ export function InboxScreen({ navigation }: Props) {
     try {
       const result = await convertUrlToArticle(item.id);
       if (result.success) {
-        Alert.alert(
-          'Article créé ✓',
-          'Article créé avec URL. Vous pouvez compléter les détails.',
-          [
-            { text: 'Voir', onPress: () => navigation.navigate('ArticleDetail', { articleId: result.entityId }) },
-            { text: 'OK' },
-          ]
-        );
+        showSuccess('Article créé', 'Article créé avec URL.');
+        navigation.navigate('ArticleDetail', { articleId: result.entityId });
         refresh();
       } else {
-        Alert.alert('Erreur', result.error || 'Création échouée');
+        showError('Erreur', result.error || 'Création échouée');
       }
     } finally {
       setConverting(null);
@@ -232,14 +212,10 @@ export function InboxScreen({ navigation }: Props) {
         useRawAsContent: true,
       });
       if (result.success) {
-        Alert.alert(
-          'Note créée ✓',
-          `Note liée à ${entity.displayName}`,
-          [{ text: 'OK' }]
-        );
+        showSuccess('Note créée', `Note liée à ${entity.displayName}`);
         refresh();
       } else {
-        Alert.alert('Erreur', result.error || 'Création échouée');
+        showError('Erreur', result.error || 'Création échouée');
       }
     } finally {
       setConverting(null);
@@ -263,39 +239,92 @@ export function InboxScreen({ navigation }: Props) {
 
   // Swipe to archive
   const handleArchive = useCallback(async (id: string) => {
-    Alert.alert(
+    const confirmed = await showConfirm(
       'Archiver',
       'Archiver cet élément ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Archiver',
-          onPress: () => archive(id),
-        },
-      ]
+      'Archiver',
+      'Annuler'
     );
+    if (confirmed) {
+      archive(id);
+    }
   }, [archive]);
 
   // Long press to delete
   const handleDelete = useCallback(async (id: string) => {
-    Alert.alert(
+    const confirmed = await showConfirm(
       'Supprimer',
       'Supprimer définitivement ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => remove(id),
-        },
-      ]
+      'Supprimer',
+      'Annuler',
+      true
     );
+    if (confirmed) {
+      remove(id);
+    }
   }, [remove]);
 
   // Item press - show conversion options
-  const handleItemPress = useCallback((item: InboxItem) => {
+  const handleItemPress = useCallback(async (item: InboxItem) => {
     if (converting) return; // Prevent double taps
     
+    // On web, we'll use a simpler approach with individual actions
+    // Based on detected type, offer the primary action directly
+    
+    if (Platform.OS === 'web') {
+      if (!advancedMode && item.detected_type !== 'text') {
+        const confirmed = await showConfirm(
+          'Archiver',
+          'Mode avancé désactivé. Archiver cet élément ? ',
+          'Archiver',
+          'Annuler'
+        );
+        if (confirmed) handleArchive(item.id);
+        return;
+      }
+      // Web: Direct action based on type
+      if (item.detected_type === 'pmid') {
+        const confirmed = await showConfirm(
+          'Importer depuis PubMed',
+          `PMID: ${item.normalized || item.raw}`,
+          'Importer',
+          'Annuler'
+        );
+        if (confirmed) handleConvertPmid(item);
+      } else if (item.detected_type === 'doi') {
+        const confirmed = await showConfirm(
+          'Créer Article (DOI)',
+          `DOI: ${item.normalized || item.raw}`,
+          'Créer',
+          'Annuler'
+        );
+        if (confirmed) handleConvertDoi(item);
+      } else if (item.detected_type === 'url') {
+        const confirmed = await showConfirm(
+          'Créer Article (URL)',
+          item.normalized || item.raw,
+          'Créer',
+          'Annuler'
+        );
+        if (confirmed) handleConvertUrl(item);
+      } else if (item.detected_type === 'text') {
+        handleLinkToEntity(item);
+      } else {
+        // Show delete option for unknown types
+        const deleteConfirmed = await showConfirm(
+          'Supprimer',
+          'Supprimer cet élément ?',
+          'Supprimer',
+          'Annuler',
+          true
+        );
+        if (deleteConfirmed) handleDelete(item.id);
+      }
+      return;
+    }
+    
+    // Mobile: Use ActionSheet-style Alert
+    const { Alert } = require('react-native');
     const typeLabel = item.detected_type ? getTypeLabel(item.detected_type) : 'Texte';
     
     // Build actions based on type
@@ -304,21 +333,21 @@ export function InboxScreen({ navigation }: Props) {
     ];
 
     // Type-specific conversion actions
-    if (item.detected_type === 'pmid') {
+    if (advancedMode && item.detected_type === 'pmid') {
       actions.push({
         text: '📄 Importer depuis PubMed',
         onPress: () => handleConvertPmid(item),
       });
     }
     
-    if (item.detected_type === 'doi') {
+    if (advancedMode && item.detected_type === 'doi') {
       actions.push({
         text: '📄 Créer Article (DOI)',
         onPress: () => handleConvertDoi(item),
       });
     }
     
-    if (item.detected_type === 'url') {
+    if (advancedMode && item.detected_type === 'url') {
       actions.push({
         text: '📄 Créer Article (URL)',
         onPress: () => handleConvertUrl(item),
@@ -357,7 +386,7 @@ export function InboxScreen({ navigation }: Props) {
       item.normalized || item.raw.slice(0, 100),
       actions
     );
-  }, [converting, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, handleLinkToEntity, handleRestore]);
+  }, [converting, advancedMode, archive, handleConvertPmid, handleConvertDoi, handleConvertUrl, handleLinkToEntity, handleRestore, handleArchive]);
 
   const renderItem = useCallback(({ item }: { item: InboxItem }) => {
     const isConverting = converting === item.id;
@@ -426,6 +455,12 @@ export function InboxScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Inbox</Text>
         <View style={styles.headerActions}>
+          <Pressable
+            style={[styles.advancedToggle, { backgroundColor: advancedMode ? colors.accent : colors.surface, borderColor: colors.borderHairline }]}
+            onPress={() => setAdvancedMode(prev => !prev)}
+          >
+            <Text style={[styles.advancedToggleText, { color: advancedMode ? '#000' : colors.textMuted }]}>Avancé</Text>
+          </Pressable>
           <GlobalSearchButton />
           <SettingsButton />
         </View>
@@ -476,7 +511,7 @@ export function InboxScreen({ navigation }: Props) {
             <TextInput
               ref={inputRef}
               style={[styles.input, { color: colors.text }]}
-              placeholder="PMID, DOI, URL, ou note..."
+              placeholder={advancedMode ? 'PMID, DOI, URL, ou note...' : 'Note rapide...'}
               placeholderTextColor={colors.textMuted}
               value={input}
               onChangeText={handleInputChange}
@@ -488,7 +523,7 @@ export function InboxScreen({ navigation }: Props) {
             />
             
             {/* Live detection indicator */}
-            {detectedType && (
+            {advancedMode && detectedType && (
               <View style={[styles.detectedBadge, { backgroundColor: getTypeColor(detectedType) }]}>
                 <Text style={styles.detectedBadgeText}>
                   {getTypeLabel(detectedType)}
@@ -620,6 +655,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  advancedToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  advancedToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   title: {
     ...typography.h1,

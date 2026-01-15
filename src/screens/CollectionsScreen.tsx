@@ -10,10 +10,10 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { showConfirm, showError } from '../lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -72,32 +72,29 @@ export function CollectionsScreen({ navigation }: Props) {
       setShowCreateModal(false);
       loadCollections();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      showError('Erreur', error.message);
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = (collection: Collection) => {
-    Alert.alert(
+  const handleDelete = async (collection: Collection) => {
+    const confirmed = await showConfirm(
       'Supprimer la collection',
       `Supprimer "${collection.name}" ? Les éléments ne seront pas supprimés.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCollection(collection.id);
-              loadCollections();
-            } catch (error: any) {
-              Alert.alert('Erreur', error.message);
-            }
-          },
-        },
-      ]
+      'Supprimer',
+      'Annuler',
+      true
     );
+    
+    if (confirmed) {
+      try {
+        await deleteCollection(collection.id);
+        loadCollections();
+      } catch (error: any) {
+        showError('Erreur', error.message);
+      }
+    }
   };
 
   const handleTogglePin = async (collection: Collection) => {
@@ -105,7 +102,7 @@ export function CollectionsScreen({ navigation }: Props) {
       await toggleCollectionPin(collection.id);
       loadCollections();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      showError('Erreur', error.message);
     }
   };
 

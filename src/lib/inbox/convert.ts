@@ -81,6 +81,7 @@ export async function convertPmidToArticle(
     // Build article data
     const articleData: ArticleInsert = {
       title: pubmedArticle.title,
+      authors: formatAuthors(pubmedArticle.authors) || undefined,  // Include authors
       journal: pubmedArticle.journal || undefined,
       year: pubmedArticle.year || undefined,
       doi: pubmedArticle.doi || undefined,

@@ -12,7 +12,6 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -22,6 +21,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useTheme, typography, spacing, radius } from '../theme';
 import { Icon } from '../components/Icons';
+import { showConfirm } from '../lib/alert';
 import { listTags, deleteTag, getNotesForTag } from '../lib/knowledge';
 import type { Tag, EntityNote } from '../types/knowledge';
 
@@ -69,30 +69,27 @@ export function TagsScreen({ navigation }: Props) {
     }
   }, []);
 
-  const handleDeleteTag = (tag: Tag) => {
-    Alert.alert(
+  const handleDeleteTag = async (tag: Tag) => {
+    const confirmed = await showConfirm(
       'Supprimer le tag',
       `Voulez-vous supprimer le tag #${tag.name}? Il sera retiré de toutes les notes.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTag(tag.id);
-              load();
-              if (selectedTag?.id === tag.id) {
-                setSelectedTag(null);
-                setTagNotes([]);
-              }
-            } catch (e) {
-              console.error('Error deleting tag:', e);
-            }
-          },
-        },
-      ]
+      'Supprimer',
+      'Annuler',
+      true
     );
+    
+    if (confirmed) {
+      try {
+        await deleteTag(tag.id);
+        load();
+        if (selectedTag?.id === tag.id) {
+          setSelectedTag(null);
+          setTagNotes([]);
+        }
+      } catch (e) {
+        console.error('Error deleting tag:', e);
+      }
+    }
   };
 
   const filteredTags = tags.filter((t) =>

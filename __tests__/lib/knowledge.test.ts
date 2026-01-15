@@ -6,11 +6,14 @@
 // Mock responses storage
 let mockData: any = null;
 let mockError: any = null;
+let mockInsertData: any = null;
+let mockInsertError: any = null;
 let mockUser: any = { id: 'user123', email: 'test@example.com' };
 
 // Create mock implementation that will be used by jest.mock factory
 const mockFromImpl = jest.fn();
 const mockAuthGetUser = jest.fn();
+let mockInsertImpl: jest.Mock;
 
 // Mock the supabase module BEFORE imports
 jest.mock('../../src/lib/supabase', () => ({
@@ -49,9 +52,11 @@ import {
   deleteNote,
   listNotesForEntity,
   createTag,
+  getOrCreateEntityTag,
   deleteTag,
   getNotesForTag,
   searchAll,
+  searchWithFilters,
 } from '../../src/lib/knowledge';
 
 describe('Knowledge Base API', () => {
@@ -59,6 +64,8 @@ describe('Knowledge Base API', () => {
     jest.clearAllMocks();
     mockData = null;
     mockError = null;
+    mockInsertData = null;
+    mockInsertError = null;
     
     // Mock auth.getUser() to return a valid user
     mockAuthGetUser.mockResolvedValue({
@@ -68,32 +75,44 @@ describe('Knowledge Base API', () => {
     
     // Helper to get current mock values
     const getResponse = () => ({ data: mockData, error: mockError });
+    const getInsertResponse = () => ({
+      data: mockInsertData ?? mockData,
+      error: mockInsertError ?? mockError,
+    });
+
+    const makeEqResult = () => ({
+      order: jest.fn(() => Promise.resolve(getResponse())),
+      then: (resolve: any, reject: any) => Promise.resolve(getResponse()).then(resolve, reject),
+    });
+
+    const selectEqChain: any = {
+      eq: jest.fn(() => selectEqChain),
+      single: jest.fn(() => Promise.resolve(getResponse())),
+      order: jest.fn(() => Promise.resolve(getResponse())),
+      select: jest.fn(() => Promise.resolve(getResponse())),
+      in: jest.fn(() => makeEqResult()),
+    };
     
     // Setup mockFrom to return chainable mock
+    mockInsertImpl = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn(() => Promise.resolve(getInsertResponse())),
+      }),
+    });
+
     mockFromImpl.mockReturnValue({
       select: jest.fn().mockReturnValue({
         order: jest.fn(() => Promise.resolve(getResponse())),
-        eq: jest.fn().mockReturnValue({
-          single: jest.fn(() => Promise.resolve(getResponse())),
-          eq: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              order: jest.fn(() => Promise.resolve(getResponse())),
-            }),
-            select: jest.fn(() => Promise.resolve(getResponse())),
-            order: jest.fn(() => Promise.resolve(getResponse())),
-          }),
-          order: jest.fn(() => Promise.resolve(getResponse())),
-        }),
+        eq: jest.fn(() => selectEqChain),
         single: jest.fn(() => Promise.resolve(getResponse())),
         or: jest.fn().mockReturnValue({
           limit: jest.fn(() => Promise.resolve(getResponse())),
         }),
-      }),
-      insert: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          single: jest.fn(() => Promise.resolve(getResponse())),
+        in: jest.fn().mockReturnValue({
+          eq: jest.fn(() => makeEqResult()),
         }),
       }),
+      insert: mockInsertImpl,
       update: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -373,7 +392,7 @@ describe('Knowledge Base API', () => {
 
       await linkGeneToConference('lacZ', 'E. coli', 'c1');
 
-      expect(mockFromImpl).toHaveBeenCalledWith('gene_conferences');
+      expect(mockFromImpl).toHaveBeenCalledWith('conference_genes');
     });
 
     test('linkArticleToConference creates link', async () => {
@@ -447,7 +466,7 @@ describe('Knowledge Base API', () => {
     test('createTag creates new tag', async () => {
       const mockTag = { name: 'genomics', color: '#FF0000' };
 
-      mockData = mockTag;
+      mockInsertData = mockTag;
       mockError = null;
 
       const result = await createTag({ name: 'genomics' });
@@ -472,6 +491,48 @@ describe('Knowledge Base API', () => {
 
       expect(mockFromImpl).toHaveBeenCalledWith('note_tags');
       // entity_notes will be called only if noteIds.length > 0
+    });
+
+    test('getOrCreateEntityTag uses gene naming convention', async () => {
+      mockData = null; // No existing tag
+      mockInsertData = {
+        id: 't1',
+        name: 'lacz-eco',
+        entity_type: 'gene',
+        entity_id: 'lacZ_Escherichia coli',
+      };
+
+      const result = await getOrCreateEntityTag('gene', 'lacZ_Escherichia coli', 'lacZ');
+
+      expect(mockInsertImpl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'lacz-eco',
+          entity_type: 'gene',
+          entity_id: 'lacZ_Escherichia coli',
+        })
+      );
+      expect(result.name).toBe('lacz-eco');
+    });
+
+    test('getOrCreateEntityTag uses researcher last name', async () => {
+      mockData = null; // No existing tag
+      mockInsertData = {
+        id: 't2',
+        name: 'curie',
+        entity_type: 'researcher',
+        entity_id: 'r1',
+      };
+
+      const result = await getOrCreateEntityTag('researcher', 'r1', 'Marie Curie');
+
+      expect(mockInsertImpl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'curie',
+          entity_type: 'researcher',
+          entity_id: 'r1',
+        })
+      );
+      expect(result.name).toBe('curie');
     });
   });
 
@@ -503,6 +564,17 @@ describe('Knowledge Base API', () => {
       const result = await searchAll('nonexistent');
 
       expect(result).toBeDefined();
+    });
+
+    test('searchWithFilters limits entity types', async () => {
+      mockData = [{ id: 'r1', name: 'Dr. Ada' }];
+      mockError = null;
+
+      const result = await searchWithFilters('ada', { types: ['researcher'], limit: 5 });
+
+      const calledTables = mockFromImpl.mock.calls.map((call) => call[0]);
+      expect(calledTables).toEqual(['researchers']);
+      expect(result).toEqual([{ type: 'researcher', data: { id: 'r1', name: 'Dr. Ada' } }]);
     });
   });
 

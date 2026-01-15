@@ -133,6 +133,23 @@ export async function listActiveInbox(): Promise<InboxServiceResult<InboxItem[]>
 }
 
 /**
+ * List all inbox items (including archived)
+ */
+export async function listAllInbox(): Promise<InboxServiceResult<InboxItem[]>> {
+  try {
+    const { data, error } = await supabaseWithAuth
+      .from('inbox_items')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data: (data as InboxItem[]) ?? [], error: null };
+  } catch (err) {
+    return { data: null, error: wrapError('listAllInbox', err) };
+  }
+}
+
+/**
  * Get a single inbox item by ID
  */
 export async function getInboxItem(

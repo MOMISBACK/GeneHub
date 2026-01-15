@@ -26,6 +26,7 @@ export type ResearcherUpdate = Partial<ResearcherInsert>;
 export interface Article {
   id: string;
   title: string;
+  authors?: string;          // Formatted: "Smith J., Doe A., ..."
   journal?: string;
   year?: number;
   doi?: string;
@@ -36,6 +37,37 @@ export interface Article {
   external_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Get first author's last name from article
+ */
+export function getFirstAuthorLastName(article: Article): string | null {
+  if (!article.authors) return null;
+  
+  // Parse "LastName FirstInitial., ..." or "LastName, FirstName, ..."
+  const firstAuthor = article.authors.split(',')[0].trim();
+  
+  // Extract last name (before any initial or space)
+  const parts = firstAuthor.split(' ');
+  return parts[0] || null;
+}
+
+/**
+ * Generate citation tag for article (e.g., "Smith 2024")
+ */
+export function getArticleCitationTag(article: Article): string {
+  const firstName = getFirstAuthorLastName(article);
+  const year = article.year;
+  
+  if (firstName && year) {
+    return `${firstName} ${year}`;
+  } else if (firstName) {
+    return firstName;
+  } else if (year) {
+    return `Article ${year}`;
+  }
+  return article.title.substring(0, 20);
 }
 
 export type ArticleInsert = Omit<Article, 'id' | 'created_at' | 'updated_at'>;
@@ -90,6 +122,8 @@ export interface EntityNote {
   tags?: Tag[];
   // Flag: true if this note appears via a tag link (not native to this entity)
   isLinkedViaTag?: boolean;
+  // The tag that links this note to the current entity (when isLinkedViaTag=true)
+  linkingTag?: Tag;
 }
 
 export type EntityNoteInsert = Omit<EntityNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'tags'>;
@@ -145,10 +179,12 @@ export interface ResearcherWithRelations extends Researcher {
   genes?: { gene_symbol: string; organism: string; role?: string }[];
   articles?: Article[];
   conferences?: Conference[];
+  collaborators?: (Researcher & { relationship_type?: string })[];
 }
 
 export interface ArticleWithRelations extends Article {
-  authors?: (Researcher & { author_position?: number; is_corresponding?: boolean })[];
+  /** Linked researchers (from article_researchers table) */
+  linkedResearchers?: (Researcher & { author_position?: number; is_corresponding?: boolean })[];
   genes?: { gene_symbol: string; organism: string }[];
 }
 

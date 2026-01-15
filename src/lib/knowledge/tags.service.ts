@@ -4,7 +4,33 @@
  */
 
 import { supabaseWithAuth, wrapError, requireUserId } from './client';
-import type { Tag, TagInsert, EntityNote } from '../../types/knowledge';
+import type { Tag, TagInsert, EntityNote, EntityType } from '../../types/knowledge';
+import { getOrganismCode } from '../../data/organisms';
+
+function normalizeTagName(name: string): string {
+  return name.toLowerCase().trim();
+}
+
+function getLastName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1]?.toLowerCase() ?? fullName.toLowerCase();
+}
+
+function getArticleTagName(title: string): string {
+  const firstWord = title.trim().split(/\s+/)[0] ?? '';
+  const cleanWord = firstWord.replace(/[^a-z]/gi, '');
+  return normalizeTagName(cleanWord || title);
+}
+
+function getGeneTagNameFromEntity(entityId: string, entityName?: string): string {
+  const [symbolRaw, organismRaw] = entityId.includes('_')
+    ? entityId.split('_')
+    : [entityId, entityName ?? ''];
+  const symbol = normalizeTagName(symbolRaw);
+  const organismName = organismRaw?.replace(/_/g, ' ').trim();
+  const orgCode = organismName ? getOrganismCode(organismName) : 'org';
+  return orgCode ? `${symbol}-${orgCode}` : symbol;
+}
 
 export async function listTags(): Promise<Tag[]> {
   const userId = await requireUserId();
@@ -40,13 +66,13 @@ export async function getOrCreateTag(name: string): Promise<Tag> {
     .from('tags')
     .select('*')
     .eq('user_id', userId)
-    .eq('name', name.toLowerCase().trim())
+    .eq('name', normalizeTagName(name))
     .single();
 
   if (existing) return existing;
 
   // Create new
-  return createTag({ name: name.toLowerCase().trim() });
+  return createTag({ name: normalizeTagName(name) });
 }
 
 /**
@@ -54,7 +80,7 @@ export async function getOrCreateTag(name: string): Promise<Tag> {
  */
 export async function getOrCreateTagWithData(tagData: TagInsert): Promise<Tag> {
   const userId = await requireUserId();
-  const normalizedName = tagData.name.toLowerCase().trim();
+  const normalizedName = normalizeTagName(tagData.name);
   
   // Try to find existing for this user
   const { data: existing } = await supabaseWithAuth
@@ -68,6 +94,45 @@ export async function getOrCreateTagWithData(tagData: TagInsert): Promise<Tag> {
 
   // Create new with all provided data
   return createTag({ ...tagData, name: normalizedName });
+}
+
+/**
+ * Get or create the tag linked to a specific entity
+ * This is used for auto-tagging notes when they're created on an entity
+ */
+export async function getOrCreateEntityTag(
+  entityType: EntityType,
+  entityId: string,
+  entityName: string
+): Promise<Tag> {
+  const userId = await requireUserId();
+  
+  // First try to find an existing tag linked to this entity
+  const { data: existing } = await supabaseWithAuth
+    .from('tags')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId)
+    .single();
+
+  if (existing) return existing;
+
+  // Create a new tag linked to this entity (convention aligned with TagCreateModal)
+  let tagName = normalizeTagName(entityName);
+  if (entityType === 'gene') {
+    tagName = getGeneTagNameFromEntity(entityId, entityName);
+  } else if (entityType === 'researcher') {
+    tagName = getLastName(entityName);
+  } else if (entityType === 'article') {
+    tagName = getArticleTagName(entityName);
+  }
+
+  return createTag({
+    name: tagName,
+    entity_type: entityType,
+    entity_id: entityId,
+  });
 }
 
 export async function deleteTag(tagId: string): Promise<void> {
@@ -114,15 +179,28 @@ export async function getNotesForTag(tagId: string): Promise<EntityNote[]> {
 
   if (notesError) throw wrapError('notes', notesError);
 
-  // Get tags for each note
+  // Get tags for each note (batched)
   const result: EntityNote[] = notes ?? [];
-  for (const note of result) {
+  const allNoteIds = result.map(n => n.id);
+
+  if (allNoteIds.length > 0) {
     const { data: tagRels } = await supabaseWithAuth
       .from('note_tags')
-      .select('tag:tags(*)')
-      .eq('note_id', note.id);
-    
-    note.tags = tagRels?.map((r: any) => r.tag).filter(Boolean) ?? [];
+      .select('note_id, tag:tags(*)')
+      .in('note_id', allNoteIds)
+      .eq('user_id', userId);
+
+    const tagsByNote = new Map<string, any[]>();
+    (tagRels ?? []).forEach((r: any) => {
+      if (!r.note_id || !r.tag) return;
+      const arr = tagsByNote.get(r.note_id) ?? [];
+      arr.push(r.tag);
+      tagsByNote.set(r.note_id, arr);
+    });
+
+    for (const note of result) {
+      note.tags = tagsByNote.get(note.id) ?? [];
+    }
   }
 
   return result;
@@ -165,17 +243,22 @@ export async function removeTagFromNote(noteId: string, tagId: string): Promise<
 export async function getTagsWithCounts(): Promise<(Tag & { noteCount: number })[]> {
   const userId = await requireUserId();
   const tags = await listTags();
-  
-  // Get counts for each tag (only user's note_tags)
-  const result = await Promise.all(tags.map(async (tag) => {
-    const { count } = await supabaseWithAuth
-      .from('note_tags')
-      .select('*', { count: 'exact', head: true })
-      .eq('tag_id', tag.id)
-      .eq('user_id', userId);
-    
-    return { ...tag, noteCount: count ?? 0 };
+
+  // Batch counts for all tags (only user's note_tags)
+  const { data, error } = await supabaseWithAuth
+    .from('note_tags')
+    .select('tag_id')
+    .eq('user_id', userId);
+
+  if (error) throw wrapError('compte tags', error);
+
+  const counts = new Map<string, number>();
+  (data ?? []).forEach((row: { tag_id: string }) => {
+    counts.set(row.tag_id, (counts.get(row.tag_id) ?? 0) + 1);
+  });
+
+  return tags.map(tag => ({
+    ...tag,
+    noteCount: counts.get(tag.id) ?? 0,
   }));
-  
-  return result;
 }

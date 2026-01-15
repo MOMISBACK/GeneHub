@@ -3,7 +3,7 @@
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,9 +23,22 @@ import { NotesSection } from '../components/notes';
 import { RelationPicker } from '../components/relations';
 import { EntityEditModal } from '../components/edit';
 import { ViewModeToggle, NotesFullView, type ViewMode } from '../components/detail';
-import { getResearcher, linkGeneToResearcher, linkArticleToResearcher, linkConferenceToResearcher } from '../lib/knowledge';
+import { showConfirm } from '../lib/alert';
+import { 
+  getResearcher, 
+  linkGeneToResearcher, 
+  linkArticleToResearcher, 
+  linkConferenceToResearcher,
+  unlinkGeneFromResearcher,
+  unlinkArticleFromResearcher,
+  unlinkConferenceFromResearcher,
+  linkResearcherCollaborator,
+  unlinkResearcherCollaborator,
+  getArticle, 
+  getConference 
+} from '../lib/knowledge';
 import { useNotes } from '../lib/hooks';
-import type { ResearcherWithRelations, Article, Conference } from '../types/knowledge';
+import type { ResearcherWithRelations, Article, Conference, Tag } from '../types/knowledge';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResearcherDetail'>;
 
@@ -46,6 +59,7 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
   const [showGenePicker, setShowGenePicker] = useState(false);
   const [showArticlePicker, setShowArticlePicker] = useState(false);
   const [showConferencePicker, setShowConferencePicker] = useState(false);
+  const [showCollaboratorPicker, setShowCollaboratorPicker] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('recap');
 
@@ -65,6 +79,48 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Extract entities linked via tags in notes
+  const entitiesFromTags = useMemo(() => {
+    const genes: { gene_symbol: string; organism: string; fromTag: boolean }[] = [];
+    const articleIds: Set<string> = new Set();
+    const conferenceIds: Set<string> = new Set();
+
+    notes.forEach(note => {
+      note.tags?.forEach(tag => {
+        if (tag.entity_type && tag.entity_id) {
+          switch (tag.entity_type) {
+            case 'gene':
+              // entity_id format: "symbol_organism" or just "symbol"
+              const [symbol, organism = 'Escherichia coli'] = tag.entity_id.includes('_')
+                ? tag.entity_id.split('_')
+                : [tag.entity_id, 'Escherichia coli'];
+              if (!genes.some(g => g.gene_symbol === symbol && g.organism === organism)) {
+                genes.push({ gene_symbol: symbol, organism, fromTag: true });
+              }
+              break;
+            case 'article':
+              articleIds.add(tag.entity_id);
+              break;
+            case 'conference':
+              conferenceIds.add(tag.entity_id);
+              break;
+          }
+        }
+      });
+    });
+
+    return { genes, articleIds: Array.from(articleIds), conferenceIds: Array.from(conferenceIds) };
+  }, [notes]);
+
+  // Merge existing relations with tag-based relations
+  const allGenes = useMemo(() => {
+    const existing = researcher?.genes || [];
+    const fromTags = entitiesFromTags.genes.filter(
+      tg => !existing.some(eg => eg.gene_symbol === tg.gene_symbol && eg.organism === tg.organism)
+    );
+    return [...existing.map(g => ({ ...g, fromTag: false })), ...fromTags];
+  }, [researcher?.genes, entitiesFromTags.genes]);
 
   // Relation handlers
   const handleAddGene = async (gene: { symbol: string; organism: string }) => {
@@ -94,6 +150,97 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  const handleAddCollaborator = async (collaborator: Researcher) => {
+    try {
+      await linkResearcherCollaborator(researcherId, collaborator.id);
+      load();
+    } catch (e) {
+      console.error('Error linking collaborator:', e);
+    }
+  };
+
+  // Delete handlers
+  const handleDeleteGene = async (geneSymbol: string, organism: string, fromTag: boolean) => {
+    if (fromTag) {
+      // Can't delete tag-based relations from here
+      return;
+    }
+    
+    const confirmed = await showConfirm(
+      'Supprimer',
+      `Supprimer la liaison avec ${geneSymbol} ?`,
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      try {
+        await unlinkGeneFromResearcher(geneSymbol, organism, researcherId);
+        load();
+      } catch (e) {
+        console.error('Error unlinking gene:', e);
+      }
+    }
+  };
+
+  const handleDeleteArticle = async (articleId: string) => {
+    const confirmed = await showConfirm(
+      'Supprimer',
+      'Supprimer la liaison avec cet article ?',
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      try {
+        await unlinkArticleFromResearcher(articleId, researcherId);
+        load();
+      } catch (e) {
+        console.error('Error unlinking article:', e);
+      }
+    }
+  };
+
+  const handleDeleteConference = async (conferenceId: string) => {
+    const confirmed = await showConfirm(
+      'Supprimer',
+      'Supprimer la liaison avec cette conférence ?',
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      try {
+        await unlinkConferenceFromResearcher(conferenceId, researcherId);
+        load();
+      } catch (e) {
+        console.error('Error unlinking conference:', e);
+      }
+    }
+  };
+
+  const handleDeleteCollaborator = async (collaboratorId: string) => {
+    const confirmed = await showConfirm(
+      'Supprimer',
+      'Supprimer la liaison avec ce chercheur ?',
+      'Supprimer',
+      'Annuler',
+      true
+    );
+    
+    if (confirmed) {
+      try {
+        await unlinkResearcherCollaborator(researcherId, collaboratorId);
+        load();
+      } catch (e) {
+        console.error('Error unlinking collaborator:', e);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.bg }]}>
@@ -117,9 +264,6 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
-        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {researcher.name}
         </Text>
@@ -175,21 +319,31 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
         <View style={[styles.section, { borderColor: colors.borderHairline }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Protéines étudiées ({researcher.genes?.length || 0})
+              Gènes étudiés ({allGenes.length})
             </Text>
             <Pressable style={[styles.addBtn, { borderColor: colors.borderHairline }]} onPress={() => setShowGenePicker(true)}>
               <Text style={[styles.addBtnText, { color: colors.accent }]}>+</Text>
             </Pressable>
           </View>
-          {researcher.genes && researcher.genes.length > 0 && (
+          {allGenes.length > 0 && (
             <View style={styles.chipList}>
-              {researcher.genes.map((g, i) => (
+              {allGenes.map((g, i) => (
                 <Pressable
                   key={`${g.gene_symbol}_${i}`}
-                  style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.borderHairline }]}
+                  style={[
+                    styles.chip, 
+                    { 
+                      backgroundColor: colors.surface, 
+                      borderColor: g.fromTag ? colors.accent : colors.borderHairline,
+                      borderStyle: g.fromTag ? 'dashed' : 'solid',
+                    }
+                  ]}
                   onPress={() => navigation.push('GeneDetail', { symbol: g.gene_symbol, organism: g.organism })}
+                  onLongPress={() => handleDeleteGene(g.gene_symbol, g.organism, g.fromTag)}
                 >
-                  <Text style={[styles.chipText, { color: colors.accent }]}>{g.gene_symbol}</Text>
+                  <Text style={[styles.chipText, { color: colors.accent }]}>
+                    {g.fromTag ? '🏷️ ' : ''}{g.gene_symbol}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -211,6 +365,7 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
                 key={article.id}
                 style={[styles.articleRow, { borderColor: colors.borderHairline }]}
                 onPress={() => navigation.push('ArticleDetail', { articleId: article.id })}
+                onLongPress={() => handleDeleteArticle(article.id)}
               >
                 <Text style={[styles.articleTitle, { color: colors.text }]} numberOfLines={2}>
                   {article.title}
@@ -242,6 +397,7 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
                 key={conf.id}
                 style={[styles.confRow, { borderColor: colors.borderHairline }]}
                 onPress={() => navigation.push('ConferenceDetail', { conferenceId: conf.id })}
+                onLongPress={() => handleDeleteConference(conf.id)}
               >
                 <Text style={[styles.confName, { color: colors.text }]}>{conf.name}</Text>
                 {conf.city && (
@@ -252,6 +408,40 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
               </Pressable>
             ))}
         </View>
+
+        {/* Collaborators */}
+        <View style={[styles.section, { borderColor: colors.borderHairline }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Chercheurs associés ({researcher.collaborators?.length || 0})
+            </Text>
+            <Pressable style={[styles.addBtn, { borderColor: colors.borderHairline }]} onPress={() => setShowCollaboratorPicker(true)}>
+              <Text style={[styles.addBtnText, { color: colors.accent }]}>+</Text>
+            </Pressable>
+          </View>
+          {researcher.collaborators && researcher.collaborators.length > 0 && (
+            <View style={styles.chipList}>
+              {researcher.collaborators.map((collab, i) => (
+                <Pressable
+                  key={`${collab.id}_${i}`}
+                  style={[
+                    styles.chip, 
+                    { 
+                      backgroundColor: 'transparent', 
+                      borderColor: colors.borderHairline,
+                    }
+                  ]}
+                  onPress={() => navigation.push('ResearcherDetail', { researcherId: collab.id })}
+                  onLongPress={() => handleDeleteCollaborator(collab.id)}
+                >
+                  <Text style={[styles.chipText, { color: colors.accent }]}>
+                    {collab.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
       )}
 
@@ -261,7 +451,7 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
         onClose={() => setShowGenePicker(false)}
         entityType="gene"
         onSelect={(item) => handleAddGene(item as { symbol: string; organism: string })}
-        title="Ajouter une protéine"
+        title="Ajouter un gène"
       />
       <RelationPicker
         visible={showArticlePicker}
@@ -278,6 +468,14 @@ export function ResearcherDetailScreen({ route, navigation }: Props) {
         onSelect={(item) => handleAddConference(item as Conference)}
         excludeIds={researcher.conferences?.map((c) => c.id) || []}
         title="Ajouter une conférence"
+      />
+      <RelationPicker
+        visible={showCollaboratorPicker}
+        onClose={() => setShowCollaboratorPicker(false)}
+        entityType="researcher"
+        onSelect={(item) => handleAddCollaborator(item as Researcher)}
+        excludeIds={[researcherId, ...(researcher.collaborators?.map((c) => c.id) || [])]}
+        title="Ajouter un chercheur associé"
       />
 
       {/* Edit Modal */}
@@ -360,8 +558,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
     borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: 'transparent',
   },
-  chipText: { ...typography.bodySmall, fontWeight: '500' },
+  chipText: { ...typography.bodySmall, fontWeight: '500', fontStyle: 'italic' },
   
   articleRow: {
     paddingVertical: spacing.sm,

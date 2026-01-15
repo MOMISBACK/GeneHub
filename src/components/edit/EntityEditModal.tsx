@@ -12,13 +12,13 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 
 import { useTheme, typography, spacing, radius } from '../../theme';
 import { Icon } from '../Icons';
+import { showConfirm, showError } from '../../lib/alert';
 import {
   updateResearcher,
   deleteResearcher,
@@ -102,47 +102,43 @@ export function EntityEditModal({ visible, onClose, entityType, entity, onSaved,
       onSaved();
       onClose();
     } catch (e: any) {
-      Alert.alert('Erreur', e.message);
+      showError('Erreur', e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
+  const handleDelete = async () => {
+    const confirmed = await showConfirm(
       'Confirmer la suppression',
       'Cette action est irréversible. Voulez-vous vraiment supprimer cet élément?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            if (!entity) return;
-            setSaving(true);
-            try {
-              switch (entityType) {
-                case 'researcher':
-                  await deleteResearcher(entity.id);
-                  break;
-                case 'article':
-                  await deleteArticle(entity.id);
-                  break;
-                case 'conference':
-                  await deleteConference(entity.id);
-                  break;
-              }
-              onDeleted?.();
-              onClose();
-            } catch (e: any) {
-              Alert.alert('Erreur', e.message);
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ]
+      'Supprimer',
+      'Annuler',
+      true
     );
+    
+    if (!confirmed || !entity) return;
+    
+    setSaving(true);
+    try {
+      switch (entityType) {
+        case 'researcher':
+          await deleteResearcher(entity.id);
+          break;
+        case 'article':
+          await deleteArticle(entity.id);
+          break;
+        case 'conference':
+          await deleteConference(entity.id);
+          break;
+      }
+      onDeleted?.();
+      onClose();
+    } catch (e: any) {
+      showError('Erreur', e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getTitle = () => {
